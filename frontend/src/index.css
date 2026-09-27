@@ -1,0 +1,950 @@
+@import "tailwindcss";
+
+:root {
+  font-family:
+    Inter,
+    ui-sans-serif,
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    sans-serif;
+
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+
+  --wms-blue: 37, 99, 235;
+  --wms-cyan: 6, 182, 212;
+  --wms-violet: 139, 92, 246;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  margin: 0;
+  min-inline-size: 320px;
+  min-block-size: 100%;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  min-block-size: 100vh;
+
+  transition:
+    background-color 180ms ease,
+    color 180ms ease;
+}
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+button:disabled {
+  cursor: not-allowed;
+}
+
+/* =========================================================
+   APP BACKGROUND
+========================================================= */
+
+.wms-app-shell {
+  position: relative;
+  isolation: isolate;
+
+  min-height: 100vh;
+
+  color: #1e293b;
+
+  background:
+    radial-gradient(
+      circle at 8% 8%,
+      rgba(59, 130, 246, 0.16),
+      transparent 27rem
+    ),
+    radial-gradient(
+      circle at 92% 18%,
+      rgba(139, 92, 246, 0.12),
+      transparent 30rem
+    ),
+    radial-gradient(
+      circle at 70% 88%,
+      rgba(6, 182, 212, 0.1),
+      transparent 28rem
+    ),
+    linear-gradient(
+      145deg,
+      #f8fbff 0%,
+      #f4f7fc 45%,
+      #f8f7ff 100%
+    );
+
+  transition:
+    background 240ms ease,
+    color 180ms ease;
+}
+
+/*
+  Soft decorative light sources.
+  They stay behind the application.
+*/
+
+.wms-app-shell::before,
+.wms-app-shell::after {
+  content: "";
+
+  position: fixed;
+  z-index: -1;
+
+  pointer-events: none;
+
+  border-radius: 999px;
+
+  filter: blur(90px);
+
+  opacity: 0.55;
+}
+
+.wms-app-shell::before {
+  top: 10rem;
+  right: 8%;
+
+  width: 18rem;
+  height: 18rem;
+
+  background:
+    rgba(
+      var(--wms-blue),
+      0.16
+    );
+}
+
+.wms-app-shell::after {
+  bottom: 6rem;
+  left: 20%;
+
+  width: 20rem;
+  height: 20rem;
+
+  background:
+    rgba(
+      var(--wms-violet),
+      0.11
+    );
+}
+
+/* =========================================================
+   GLASS SYSTEM
+========================================================= */
+
+.wms-glass {
+  border:
+    1px solid
+    rgba(255, 255, 255, 0.66);
+
+  background:
+    rgba(255, 255, 255, 0.7);
+
+  box-shadow:
+    0 1px 1px
+      rgba(15, 23, 42, 0.02),
+    0 18px 50px
+      rgba(15, 23, 42, 0.07);
+
+  backdrop-filter:
+    blur(22px)
+    saturate(145%);
+
+  -webkit-backdrop-filter:
+    blur(22px)
+    saturate(145%);
+}
+
+.wms-glass-strong {
+  border:
+    1px solid
+    rgba(255, 255, 255, 0.72);
+
+  background:
+    rgba(255, 255, 255, 0.84);
+
+  box-shadow:
+    0 18px 55px
+      rgba(15, 23, 42, 0.09);
+
+  backdrop-filter:
+    blur(26px)
+    saturate(155%);
+
+  -webkit-backdrop-filter:
+    blur(26px)
+    saturate(155%);
+}
+
+/*
+  Existing pages already use bg-white heavily.
+  This makes those cards feel glassy automatically
+  without rewriting every page.
+*/
+
+.wms-app-shell .bg-white {
+  background-color:
+    rgba(
+      255,
+      255,
+      255,
+      0.76
+    ) !important;
+
+  backdrop-filter:
+    blur(18px)
+    saturate(140%);
+
+  -webkit-backdrop-filter:
+    blur(18px)
+    saturate(140%);
+}
+
+/* Softer existing cards */
+
+.wms-app-shell .shadow-sm {
+  box-shadow:
+    0 1px 2px
+      rgba(15, 23, 42, 0.025),
+    0 14px 35px
+      rgba(15, 23, 42, 0.055);
+}
+
+/* Add nicer lift on existing sections/cards */
+
+.wms-app-shell main section {
+  transition:
+    transform 180ms ease,
+    box-shadow 180ms ease,
+    border-color 180ms ease,
+    background-color 180ms ease;
+}
+
+.wms-app-shell main section:hover {
+  border-color:
+    rgba(
+      148,
+      163,
+      184,
+      0.34
+    );
+}
+
+/* =========================================================
+   HEADER
+========================================================= */
+
+.wms-header {
+  border-bottom:
+    1px solid
+    rgba(148, 163, 184, 0.18);
+
+  background:
+    rgba(
+      248,
+      250,
+      252,
+      0.7
+    );
+
+  box-shadow:
+    0 10px 40px
+      rgba(15, 23, 42, 0.045);
+
+  backdrop-filter:
+    blur(24px)
+    saturate(150%);
+
+  -webkit-backdrop-filter:
+    blur(24px)
+    saturate(150%);
+}
+
+/* =========================================================
+   SIDEBAR
+========================================================= */
+
+.wms-sidebar {
+  background:
+    linear-gradient(
+      165deg,
+      rgba(19, 31, 55, 0.96),
+      rgba(15, 28, 51, 0.94)
+    );
+
+  border-right:
+    1px solid
+    rgba(255, 255, 255, 0.08);
+
+  box-shadow:
+    18px 0 55px
+      rgba(15, 23, 42, 0.13);
+
+  backdrop-filter:
+    blur(26px);
+
+  -webkit-backdrop-filter:
+    blur(26px);
+}
+
+.wms-sidebar::before {
+  content: "";
+
+  position: absolute;
+
+  top: -5rem;
+  left: -4rem;
+
+  width: 14rem;
+  height: 14rem;
+
+  border-radius: 999px;
+
+  background:
+    rgba(59, 130, 246, 0.2);
+
+  filter: blur(60px);
+
+  pointer-events: none;
+}
+
+.wms-sidebar::after {
+  content: "";
+
+  position: absolute;
+
+  right: -4rem;
+  bottom: 6rem;
+
+  width: 12rem;
+  height: 12rem;
+
+  border-radius: 999px;
+
+  background:
+    rgba(139, 92, 246, 0.13);
+
+  filter: blur(60px);
+
+  pointer-events: none;
+}
+
+/* =========================================================
+   FORM POLISH
+========================================================= */
+
+.wms-app-shell input,
+.wms-app-shell textarea,
+.wms-app-shell select {
+  transition:
+    border-color 160ms ease,
+    box-shadow 160ms ease,
+    background-color 160ms ease;
+}
+
+.wms-app-shell input:focus,
+.wms-app-shell textarea:focus,
+.wms-app-shell select:focus {
+  box-shadow:
+    0 0 0 4px
+      rgba(59, 130, 246, 0.08);
+}
+
+/* =========================================================
+   SCROLLBAR
+========================================================= */
+
+::-webkit-scrollbar {
+  inline-size: 8px;
+  block-size: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+
+  background:
+    rgba(
+      148,
+      163,
+      184,
+      0.62
+    );
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background:
+    rgba(
+      100,
+      116,
+      139,
+      0.72
+    );
+}
+
+/* =========================================================
+   LIGHT THEME
+========================================================= */
+
+html[data-theme="light"] body {
+  background: #f4f7fb;
+  color: #1e293b;
+}
+
+html[data-theme="light"]
+  .wms-app-shell {
+  color: #1e293b;
+}
+
+/* =========================================================
+   DARK THEME
+========================================================= */
+
+html[data-theme="dark"] body {
+  background: #07111f;
+  color: #e2e8f0;
+}
+
+html[data-theme="dark"]
+  .wms-app-shell {
+  color: #e2e8f0;
+
+  background:
+    radial-gradient(
+      circle at 8% 8%,
+      rgba(37, 99, 235, 0.16),
+      transparent 28rem
+    ),
+    radial-gradient(
+      circle at 92% 18%,
+      rgba(139, 92, 246, 0.12),
+      transparent 30rem
+    ),
+    radial-gradient(
+      circle at 70% 88%,
+      rgba(6, 182, 212, 0.08),
+      transparent 28rem
+    ),
+    linear-gradient(
+      145deg,
+      #07111f 0%,
+      #091525 48%,
+      #0b1325 100%
+    );
+}
+
+html[data-theme="dark"]
+  .wms-app-shell::before {
+  background:
+    rgba(
+      37,
+      99,
+      235,
+      0.14
+    );
+}
+
+html[data-theme="dark"]
+  .wms-app-shell::after {
+  background:
+    rgba(
+      124,
+      58,
+      237,
+      0.1
+    );
+}
+
+/* Dark glass */
+
+html[data-theme="dark"]
+  .wms-glass {
+  border-color:
+    rgba(
+      148,
+      163,
+      184,
+      0.1
+    );
+
+  background:
+    rgba(
+      13,
+      25,
+      41,
+      0.72
+    );
+
+  box-shadow:
+    0 18px 55px
+      rgba(0, 0, 0, 0.22);
+}
+
+html[data-theme="dark"]
+  .wms-glass-strong {
+  border-color:
+    rgba(
+      148,
+      163,
+      184,
+      0.12
+    );
+
+  background:
+    rgba(
+      17,
+      28,
+      45,
+      0.84
+    );
+}
+
+html[data-theme="dark"]
+  .wms-header {
+  border-color:
+    rgba(
+      148,
+      163,
+      184,
+      0.09
+    );
+
+  background:
+    rgba(
+      7,
+      17,
+      31,
+      0.72
+    );
+
+  box-shadow:
+    0 10px 45px
+      rgba(0, 0, 0, 0.14);
+}
+
+/* Main white surfaces */
+
+html[data-theme="dark"]
+  .bg-white {
+  background-color:
+    rgba(
+      17,
+      28,
+      45,
+      0.74
+    ) !important;
+
+  border-color:
+    rgba(
+      148,
+      163,
+      184,
+      0.09
+    ) !important;
+}
+
+html[data-theme="dark"]
+  .bg-white\/95 {
+  background-color:
+    rgba(
+      17,
+      28,
+      45,
+      0.85
+    ) !important;
+}
+
+html[data-theme="dark"]
+  .bg-white\/\[0\.08\] {
+  background-color:
+    rgba(
+      255,
+      255,
+      255,
+      0.08
+    ) !important;
+}
+
+/* Slate backgrounds */
+
+html[data-theme="dark"]
+  .bg-slate-50 {
+  background-color:
+    rgba(
+      12,
+      23,
+      40,
+      0.7
+    ) !important;
+}
+
+html[data-theme="dark"]
+  .bg-slate-50\/40 {
+  background-color:
+    rgba(
+      12,
+      23,
+      40,
+      0.4
+    ) !important;
+}
+
+html[data-theme="dark"]
+  .bg-slate-50\/50 {
+  background-color:
+    rgba(
+      12,
+      23,
+      40,
+      0.5
+    ) !important;
+}
+
+html[data-theme="dark"]
+  .bg-slate-100 {
+  background-color:
+    rgba(
+      24,
+      38,
+      58,
+      0.78
+    ) !important;
+}
+
+html[data-theme="dark"]
+  .bg-slate-200 {
+  background-color:
+    #26364d !important;
+}
+
+/* Selected/info surfaces */
+
+html[data-theme="dark"]
+  .bg-blue-50 {
+  background-color:
+    rgba(
+      37,
+      99,
+      235,
+      0.14
+    ) !important;
+}
+
+html[data-theme="dark"]
+  .bg-blue-50\/60 {
+  background-color:
+    rgba(
+      37,
+      99,
+      235,
+      0.12
+    ) !important;
+}
+
+html[data-theme="dark"]
+  .bg-blue-50\/70 {
+  background-color:
+    rgba(
+      37,
+      99,
+      235,
+      0.15
+    ) !important;
+}
+
+html[data-theme="dark"]
+  .bg-emerald-50 {
+  background-color:
+    rgba(
+      16,
+      185,
+      129,
+      0.12
+    ) !important;
+}
+
+html[data-theme="dark"]
+  .bg-violet-50 {
+  background-color:
+    rgba(
+      139,
+      92,
+      246,
+      0.12
+    ) !important;
+}
+
+html[data-theme="dark"]
+  .bg-amber-50 {
+  background-color:
+    rgba(
+      245,
+      158,
+      11,
+      0.12
+    ) !important;
+}
+
+html[data-theme="dark"]
+  .bg-red-50 {
+  background-color:
+    rgba(
+      239,
+      68,
+      68,
+      0.12
+    ) !important;
+}
+
+/* Text */
+
+html[data-theme="dark"]
+  .text-slate-900,
+html[data-theme="dark"]
+  .text-slate-800,
+html[data-theme="dark"]
+  .text-slate-700 {
+  color: #e2e8f0 !important;
+}
+
+html[data-theme="dark"]
+  .text-slate-600 {
+  color: #cbd5e1 !important;
+}
+
+html[data-theme="dark"]
+  .text-slate-500 {
+  color: #94a3b8 !important;
+}
+
+html[data-theme="dark"]
+  .text-slate-400 {
+  color: #64748b !important;
+}
+
+html[data-theme="dark"]
+  .text-slate-300 {
+  color: #94a3b8 !important;
+}
+
+/* Borders */
+
+html[data-theme="dark"]
+  .border-slate-100 {
+  border-color:
+    rgba(
+      148,
+      163,
+      184,
+      0.08
+    ) !important;
+}
+
+html[data-theme="dark"]
+  .border-slate-200 {
+  border-color:
+    rgba(
+      148,
+      163,
+      184,
+      0.12
+    ) !important;
+}
+
+html[data-theme="dark"]
+  .border-blue-100 {
+  border-color:
+    rgba(
+      59,
+      130,
+      246,
+      0.3
+    ) !important;
+}
+
+html[data-theme="dark"]
+  .border-blue-300,
+html[data-theme="dark"]
+  .border-blue-400 {
+  border-color:
+    #3b82f6 !important;
+}
+
+/* Form controls */
+
+html[data-theme="dark"]
+  input:not(
+    [class*="text-white"]
+  ),
+html[data-theme="dark"]
+  textarea:not(
+    [class*="text-white"]
+  ),
+html[data-theme="dark"]
+  select {
+  background-color:
+    rgba(
+      13,
+      25,
+      41,
+      0.82
+    ) !important;
+
+  border-color:
+    rgba(
+      148,
+      163,
+      184,
+      0.14
+    ) !important;
+
+  color: #e2e8f0 !important;
+}
+
+html[data-theme="dark"]
+  input::placeholder,
+html[data-theme="dark"]
+  textarea::placeholder {
+  color: #64748b;
+}
+
+/* Hover states */
+
+html[data-theme="dark"]
+  .hover\:bg-slate-50:hover {
+  background-color:
+    rgba(
+      23,
+      36,
+      56,
+      0.82
+    ) !important;
+}
+
+html[data-theme="dark"]
+  .hover\:bg-slate-200:hover {
+  background-color:
+    #26364d !important;
+}
+
+/* Shadows */
+
+html[data-theme="dark"]
+  .shadow-sm,
+html[data-theme="dark"]
+  .shadow-md,
+html[data-theme="dark"]
+  .shadow-lg,
+html[data-theme="dark"]
+  .shadow-xl,
+html[data-theme="dark"]
+  .shadow-2xl {
+  box-shadow:
+    0 18px 55px
+      rgba(
+        0,
+        0,
+        0,
+        0.22
+      ) !important;
+}
+
+/* Scrollbar */
+
+html[data-theme="dark"]
+  ::-webkit-scrollbar-thumb {
+  background: #334155;
+}
+
+/* =========================================================
+   COMPACT DENSITY
+========================================================= */
+
+html[data-density="compact"]
+  main
+  .p-6 {
+  padding: 1rem !important;
+}
+
+html[data-density="compact"]
+  main
+  .p-5 {
+  padding: 0.875rem !important;
+}
+
+html[data-density="compact"]
+  main
+  .p-4 {
+  padding: 0.75rem !important;
+}
+
+html[data-density="compact"]
+  main
+  .px-4 {
+  padding-left: 0.75rem !important;
+  padding-right: 0.75rem !important;
+}
+
+html[data-density="compact"]
+  main
+  .py-4 {
+  padding-top: 0.75rem !important;
+  padding-bottom: 0.75rem !important;
+}
+
+html[data-density="compact"]
+  main
+  .py-3 {
+  padding-top: 0.6rem !important;
+  padding-bottom: 0.6rem !important;
+}
+
+html[data-density="compact"]
+  main
+  .gap-5 {
+  gap: 0.875rem !important;
+}
+
+html[data-density="compact"]
+  main
+  .gap-4 {
+  gap: 0.75rem !important;
+}
+
+html[data-density="compact"]
+  main
+  .space-y-5
+  > :not(:last-child) {
+  margin-bottom: 0.875rem !important;
+}
+
+html[data-density="compact"]
+  .wms-header {
+  min-height: 4rem;
+}
+
+html[data-density="comfortable"]
+  .wms-header {
+  min-height: 4.5rem;
+}

@@ -1,6 +1,7 @@
 from django.test import TestCase
 from django.urls import reverse
 from rest_framework import status
+from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework.test import APIClient
 
 from apps.authentication.models import (
@@ -49,6 +50,26 @@ class AuthenticationTests(TestCase):
             "refresh",
             response.data["data"],
         )
+
+    def test_suspended_user_existing_jwt_is_rejected(self):
+        refresh = RefreshToken.for_user(self.user)
+        access_token = str(refresh.access_token)
+
+        self.user.status = User.Status.SUSPENDED
+        self.user.save(update_fields=["status", "updated_at"])
+
+        self.client.credentials(
+            HTTP_AUTHORIZATION=f"Bearer {access_token}"
+        )
+
+        response = self.client.get(
+            "/api/v1/auth/me/"
+        )
+
+        self.assertEqual(
+            response.status_code,
+            status.HTTP_401_UNAUTHORIZED,
+        )    
 
     def test_login_wrong_password(self):
         response = self.client.post(

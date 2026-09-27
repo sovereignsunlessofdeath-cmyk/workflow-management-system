@@ -171,8 +171,13 @@ class AuthenticationService:
         ).first()
 
         if user and not user.is_active:
+            if user.status == User.Status.INACTIVE:
+                raise ValueError(
+                    "Please verify your email before logging in."
+                )
+
             raise ValueError(
-                "Please verify your email before logging in."
+                "Your account is inactive."
             )
 
         user = authenticate(

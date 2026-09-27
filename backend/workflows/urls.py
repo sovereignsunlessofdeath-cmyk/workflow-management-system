@@ -1,24 +1,26 @@
-from django.urls import include, path
-
-from workflows.approval_views import (
-    ApprovalDecisionView,
-    ApprovalListCreateView,
+from django.urls import (
+    include,
+    path,
 )
+
 from workflows.execution_views import (
     TaskDependencyDetailView,
     TaskDependencyListCreateView,
     WorkflowStageDetailView,
     WorkflowStageListCreateView,
 )
+
 from workflows.views import (
     TaskDetailView,
     TaskListCreateView,
+    TaskReopenView,
     WorkflowDetailView,
     WorkflowListCreateView,
 )
 
 
 urlpatterns = [
+    # Workflows
     path(
         "workflows/",
         WorkflowListCreateView.as_view(),
@@ -30,17 +32,7 @@ urlpatterns = [
         name="workflow-detail",
     ),
 
-    path(
-        "stages/",
-        WorkflowStageListCreateView.as_view(),
-        name="stage-list-create",
-    ),
-    path(
-        "stages/<uuid:pk>/",
-        WorkflowStageDetailView.as_view(),
-        name="stage-detail",
-    ),
-
+    # Tasks
     path(
         "tasks/",
         TaskListCreateView.as_view(),
@@ -51,26 +43,41 @@ urlpatterns = [
         TaskDetailView.as_view(),
         name="task-detail",
     ),
-
     path(
-        "dependencies/",
+        "tasks/<uuid:pk>/reopen/",
+        TaskReopenView.as_view(),
+        name="task-reopen",
+    ),
+
+    # Workflow stages
+    path(
+        "workflow-stages/",
+        WorkflowStageListCreateView.as_view(),
+        name="workflow-stage-list-create",
+    ),
+    path(
+        "workflow-stages/<uuid:pk>/",
+        WorkflowStageDetailView.as_view(),
+        name="workflow-stage-detail",
+    ),
+
+    # Task dependencies
+    path(
+        "task-dependencies/",
         TaskDependencyListCreateView.as_view(),
-        name="dependency-list-create",
+        name="workflow-task-dependency-list-create",
     ),
     path(
-        "dependencies/<uuid:pk>/",
+        "task-dependencies/<uuid:pk>/",
         TaskDependencyDetailView.as_view(),
-        name="dependency-detail",
+        name="task-dependency-detail",
     ),
 
+    # Approvals
     path(
-        "approvals/",
-        ApprovalListCreateView.as_view(),
-        name="approval-list-create",
-    ),
-    path(
-        "approvals/<uuid:pk>/decision/",
-        ApprovalDecisionView.as_view(),
-        name="approval-decision",
+        "",
+        include(
+            "workflows.approval_urls"
+        ),
     ),
 ]

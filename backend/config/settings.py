@@ -1,11 +1,13 @@
-from pathlib import Path
 import os
+from pathlib import Path
 
 from dotenv import load_dotenv
 from datetime import timedelta
 
 
 BASE_DIR = Path(__file__).resolve().parent.parent
+PROJECT_ROOT = BASE_DIR.parent
+load_dotenv(PROJECT_ROOT / ".env")
 
 load_dotenv(BASE_DIR / ".env")
 
@@ -49,6 +51,9 @@ INSTALLED_APPS = [
     "apps.users",
     "apps.authentication",
     "workflows",
+    "notifications",
+    "audit",
+    "dashboard",
 ]
 
 # ---------------------------------------------------------
@@ -137,7 +142,7 @@ AUTH_PASSWORD_VALIDATORS = [
 
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": [
-        "rest_framework_simplejwt.authentication.JWTAuthentication",
+        "apps.authentication.jwt_authentication.WMSJWTAuthentication",
     ],
     "DEFAULT_PERMISSION_CLASSES": [
         "rest_framework.permissions.IsAuthenticated",
@@ -150,7 +155,7 @@ REST_FRAMEWORK = {
 # ---------------------------------------------------------
 
 SIMPLE_JWT = {
-    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=15),
+    "ACCESS_TOKEN_LIFETIME": timedelta(hours=1),
     "REFRESH_TOKEN_LIFETIME": timedelta(days=7),
     "ROTATE_REFRESH_TOKENS": True,
     "BLACKLIST_AFTER_ROTATION": True,
@@ -186,9 +191,16 @@ USE_TZ = True
 # Email
 # ---------------------------------------------------------
 
-EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
-
-DEFAULT_FROM_EMAIL = "WMS <no-reply@wms.local>"
+EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
+EMAIL_HOST = os.getenv("EMAIL_HOST", "smtp.gmail.com")
+EMAIL_PORT = int(os.getenv("EMAIL_PORT", "587"))
+EMAIL_USE_TLS = os.getenv("EMAIL_USE_TLS", "True").lower() == "true"
+EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER")
+EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD")
+DEFAULT_FROM_EMAIL = os.getenv(
+    "DEFAULT_FROM_EMAIL",
+    "WMS <lordis.support@gmail.com>",
+)
 
 FRONTEND_URL = "http://localhost:5173"
 
@@ -205,3 +217,4 @@ STATIC_ROOT = BASE_DIR / "staticfiles"
 
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+

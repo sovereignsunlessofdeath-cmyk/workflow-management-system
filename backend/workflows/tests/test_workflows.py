@@ -1,6 +1,8 @@
 from datetime import date, timedelta
 
+from django.utils import timezone
 from django.urls import reverse
+
 from rest_framework import status
 from rest_framework.test import APITestCase
 
@@ -88,13 +90,22 @@ class WorkflowAPITests(APITestCase):
                 "description": "Created by admin",
                 "status": "DRAFT",
                 "start_date": str(date.today()),
-                "end_date": str(date.today() + timedelta(days=10)),
+                "end_date": str(
+                    date.today() + timedelta(days=10)
+                ),
             },
             format="json",
         )
 
-        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-        self.assertEqual(str(response.data["created_by"]), str(self.admin.id))
+        self.assertEqual(
+            response.status_code,
+            status.HTTP_201_CREATED,
+        )
+
+        self.assertEqual(
+            str(response.data["created_by"]),
+            str(self.admin.id),
+        )
 
     def test_manager_can_create_workflow(self):
         self.authenticate(self.manager)
@@ -109,7 +120,10 @@ class WorkflowAPITests(APITestCase):
             format="json",
         )
 
-        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(
+            response.status_code,
+            status.HTTP_201_CREATED,
+        )
 
     def test_staff_cannot_create_workflow(self):
         self.authenticate(self.staff)
@@ -123,7 +137,10 @@ class WorkflowAPITests(APITestCase):
             format="json",
         )
 
-        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(
+            response.status_code,
+            status.HTTP_403_FORBIDDEN,
+        )
 
     def test_approver_cannot_create_workflow(self):
         self.authenticate(self.approver)
@@ -136,15 +153,27 @@ class WorkflowAPITests(APITestCase):
             format="json",
         )
 
-        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(
+            response.status_code,
+            status.HTTP_403_FORBIDDEN,
+        )
 
     def test_admin_can_list_workflows(self):
         self.authenticate(self.admin)
 
-        response = self.client.get("/api/v1/workflows/")
+        response = self.client.get(
+            "/api/v1/workflows/"
+        )
 
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(len(response.data), 1)
+        self.assertEqual(
+            response.status_code,
+            status.HTTP_200_OK,
+        )
+
+        self.assertEqual(
+            len(response.data),
+            1,
+        )
 
     def test_manager_can_update_workflow(self):
         self.authenticate(self.manager)
@@ -157,7 +186,10 @@ class WorkflowAPITests(APITestCase):
             format="json",
         )
 
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(
+            response.status_code,
+            status.HTTP_200_OK,
+        )
 
     def test_staff_cannot_update_workflow(self):
         self.authenticate(self.staff)
@@ -170,7 +202,10 @@ class WorkflowAPITests(APITestCase):
             format="json",
         )
 
-        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(
+            response.status_code,
+            status.HTTP_403_FORBIDDEN,
+        )
 
     def test_workflow_delete_archives_instead(self):
         self.authenticate(self.admin)
@@ -179,7 +214,10 @@ class WorkflowAPITests(APITestCase):
             f"/api/v1/workflows/{self.workflow.id}/"
         )
 
-        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+        self.assertEqual(
+            response.status_code,
+            status.HTTP_204_NO_CONTENT,
+        )
 
         self.workflow.refresh_from_db()
 
@@ -222,13 +260,22 @@ class WorkflowAPITests(APITestCase):
                 "assigned_to": str(self.staff.id),
                 "status": "TODO",
                 "priority": "HIGH",
-                "due_date": str(date.today() + timedelta(days=5)),
+                "due_date": str(
+                    date.today() + timedelta(days=5)
+                ),
             },
             format="json",
         )
 
-        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-        self.assertEqual(response.data["title"], "Admin Task")
+        self.assertEqual(
+            response.status_code,
+            status.HTTP_201_CREATED,
+        )
+
+        self.assertEqual(
+            response.data["title"],
+            "Admin Task",
+        )
 
     def test_manager_can_create_task(self):
         self.authenticate(self.manager)
@@ -244,7 +291,10 @@ class WorkflowAPITests(APITestCase):
             format="json",
         )
 
-        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(
+            response.status_code,
+            status.HTTP_201_CREATED,
+        )
 
     def test_staff_cannot_create_task(self):
         self.authenticate(self.staff)
@@ -258,7 +308,10 @@ class WorkflowAPITests(APITestCase):
             format="json",
         )
 
-        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(
+            response.status_code,
+            status.HTTP_403_FORBIDDEN,
+        )
 
     def test_staff_can_only_see_assigned_tasks(self):
         self.authenticate(self.staff)
@@ -270,10 +323,20 @@ class WorkflowAPITests(APITestCase):
             assigned_to=self.other_staff,
         )
 
-        response = self.client.get("/api/v1/tasks/")
+        response = self.client.get(
+            "/api/v1/tasks/"
+        )
 
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(len(response.data), 1)
+        self.assertEqual(
+            response.status_code,
+            status.HTTP_200_OK,
+        )
+
+        self.assertEqual(
+            len(response.data),
+            1,
+        )
+
         self.assertEqual(
             response.data[0]["id"],
             str(self.task.id),
@@ -289,10 +352,19 @@ class WorkflowAPITests(APITestCase):
             assigned_to=self.other_staff,
         )
 
-        response = self.client.get("/api/v1/tasks/")
+        response = self.client.get(
+            "/api/v1/tasks/"
+        )
 
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(len(response.data), 2)
+        self.assertEqual(
+            response.status_code,
+            status.HTTP_200_OK,
+        )
+
+        self.assertEqual(
+            len(response.data),
+            2,
+        )
 
     def test_staff_can_update_only_status(self):
         self.authenticate(self.staff)
@@ -305,7 +377,10 @@ class WorkflowAPITests(APITestCase):
             format="json",
         )
 
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(
+            response.status_code,
+            status.HTTP_200_OK,
+        )
 
         self.task.refresh_from_db()
 
@@ -325,7 +400,10 @@ class WorkflowAPITests(APITestCase):
             format="json",
         )
 
-        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(
+            response.status_code,
+            status.HTTP_403_FORBIDDEN,
+        )
 
     def test_completed_task_gets_completion_timestamp(self):
         self.authenticate(self.staff)
@@ -338,7 +416,10 @@ class WorkflowAPITests(APITestCase):
             format="json",
         )
 
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(
+            response.status_code,
+            status.HTTP_200_OK,
+        )
 
         self.task.refresh_from_db()
 
@@ -346,26 +427,89 @@ class WorkflowAPITests(APITestCase):
             self.task.status,
             Task.Status.COMPLETED,
         )
-        self.assertIsNotNone(self.task.completed_at)
 
-    def test_reopening_completed_task_clears_completion_timestamp(self):
-        self.task.status = Task.Status.COMPLETED
-        from django.utils import timezone
+        self.assertIsNotNone(
+            self.task.completed_at
+        )
 
-        self.task.completed_at = timezone.now()
-        self.task.save()
+    def test_completed_task_cannot_be_reopened_with_normal_patch(
+        self,
+    ):
+        self.authenticate(self.admin)
 
-        self.authenticate(self.staff)
+        self.task.status = (
+            Task.Status.COMPLETED
+        )
+
+        self.task.completed_at = (
+            timezone.now()
+        )
+
+        self.task.save(
+            update_fields=[
+                "status",
+                "completed_at",
+                "updated_at",
+            ]
+        )
 
         response = self.client.patch(
             f"/api/v1/tasks/{self.task.id}/",
             {
-                "status": "IN_PROGRESS",
+                "status":
+                    Task.Status.IN_PROGRESS,
             },
             format="json",
         )
 
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(
+            response.status_code,
+            status.HTTP_400_BAD_REQUEST,
+        )
+
+        self.task.refresh_from_db()
+
+        self.assertEqual(
+            self.task.status,
+            Task.Status.COMPLETED,
+        )
+
+        self.assertIsNotNone(
+            self.task.completed_at
+        )
+
+    def test_admin_can_reopen_completed_task(self):
+        self.authenticate(self.admin)
+
+        self.task.status = (
+            Task.Status.COMPLETED
+        )
+
+        self.task.completed_at = (
+            timezone.now()
+        )
+
+        self.task.save(
+            update_fields=[
+                "status",
+                "completed_at",
+                "updated_at",
+            ]
+        )
+
+        response = self.client.post(
+            f"/api/v1/tasks/{self.task.id}/reopen/",
+            {
+                "reason":
+                    "Task was completed by mistake.",
+            },
+            format="json",
+        )
+
+        self.assertEqual(
+            response.status_code,
+            status.HTTP_200_OK,
+        )
 
         self.task.refresh_from_db()
 
@@ -373,14 +517,188 @@ class WorkflowAPITests(APITestCase):
             self.task.status,
             Task.Status.IN_PROGRESS,
         )
-        self.assertIsNone(self.task.completed_at)
+
+        self.assertIsNone(
+            self.task.completed_at
+        )
+
+    def test_reopen_requires_reason(self):
+        self.authenticate(self.admin)
+
+        self.task.status = (
+            Task.Status.COMPLETED
+        )
+
+        self.task.completed_at = (
+            timezone.now()
+        )
+
+        self.task.save(
+            update_fields=[
+                "status",
+                "completed_at",
+                "updated_at",
+            ]
+        )
+
+        response = self.client.post(
+            f"/api/v1/tasks/{self.task.id}/reopen/",
+            {},
+            format="json",
+        )
+
+        self.assertEqual(
+            response.status_code,
+            status.HTTP_400_BAD_REQUEST,
+        )
+
+        self.task.refresh_from_db()
+
+        self.assertEqual(
+            self.task.status,
+            Task.Status.COMPLETED,
+        )
+
+        self.assertIsNotNone(
+            self.task.completed_at
+        )
+
+    def test_manager_cannot_reopen_completed_task(self):
+        self.authenticate(self.manager)
+
+        self.task.status = (
+            Task.Status.COMPLETED
+        )
+
+        self.task.completed_at = (
+            timezone.now()
+        )
+
+        self.task.save(
+            update_fields=[
+                "status",
+                "completed_at",
+                "updated_at",
+            ]
+        )
+
+        response = self.client.post(
+            f"/api/v1/tasks/{self.task.id}/reopen/",
+            {
+                "reason":
+                    "Needs correction.",
+            },
+            format="json",
+        )
+
+        self.assertEqual(
+            response.status_code,
+            status.HTTP_403_FORBIDDEN,
+        )
+
+        self.task.refresh_from_db()
+
+        self.assertEqual(
+            self.task.status,
+            Task.Status.COMPLETED,
+        )
+
+    def test_approver_cannot_reopen_completed_task(self):
+        self.authenticate(self.approver)
+
+        self.task.status = (
+            Task.Status.COMPLETED
+        )
+
+        self.task.completed_at = (
+            timezone.now()
+        )
+
+        self.task.save(
+            update_fields=[
+                "status",
+                "completed_at",
+                "updated_at",
+            ]
+        )
+
+        response = self.client.post(
+            f"/api/v1/tasks/{self.task.id}/reopen/",
+            {
+                "reason":
+                    "Needs correction.",
+            },
+            format="json",
+        )
+
+        self.assertEqual(
+            response.status_code,
+            status.HTTP_403_FORBIDDEN,
+        )
+
+        self.task.refresh_from_db()
+
+        self.assertEqual(
+            self.task.status,
+            Task.Status.COMPLETED,
+        )
+
+    def test_staff_cannot_reopen_completed_task(self):
+        self.authenticate(self.staff)
+
+        self.task.assigned_to = (
+            self.staff
+        )
+
+        self.task.status = (
+            Task.Status.COMPLETED
+        )
+
+        self.task.completed_at = (
+            timezone.now()
+        )
+
+        self.task.save(
+            update_fields=[
+                "assigned_to",
+                "status",
+                "completed_at",
+                "updated_at",
+            ]
+        )
+
+        response = self.client.post(
+            f"/api/v1/tasks/{self.task.id}/reopen/",
+            {
+                "reason":
+                    "Needs correction.",
+            },
+            format="json",
+        )
+
+        self.assertEqual(
+            response.status_code,
+            status.HTTP_403_FORBIDDEN,
+        )
+
+        self.task.refresh_from_db()
+
+        self.assertEqual(
+            self.task.status,
+            Task.Status.COMPLETED,
+        )
 
     def test_approver_can_view_all_tasks(self):
         self.authenticate(self.approver)
 
-        response = self.client.get("/api/v1/tasks/")
+        response = self.client.get(
+            "/api/v1/tasks/"
+        )
 
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(
+            response.status_code,
+            status.HTTP_200_OK,
+        )
 
     def test_staff_cannot_delete_task(self):
         self.authenticate(self.staff)
@@ -389,7 +707,10 @@ class WorkflowAPITests(APITestCase):
             f"/api/v1/tasks/{self.task.id}/"
         )
 
-        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(
+            response.status_code,
+            status.HTTP_403_FORBIDDEN,
+        )
 
     def test_manager_can_cancel_task(self):
         self.authenticate(self.manager)
@@ -398,7 +719,10 @@ class WorkflowAPITests(APITestCase):
             f"/api/v1/tasks/{self.task.id}/"
         )
 
-        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+        self.assertEqual(
+            response.status_code,
+            status.HTTP_204_NO_CONTENT,
+        )
 
         self.task.refresh_from_db()
 
@@ -408,14 +732,16 @@ class WorkflowAPITests(APITestCase):
         )
 
     def test_inactive_user_cannot_be_assigned_task(self):
-        inactive_user = User.objects.create_user(
-            email="inactive@test.com",
-            password="InactivePass123!",
-            first_name="Inactive",
-            last_name="User",
-            role=User.Role.STAFF,
-            status=User.Status.INACTIVE,
-            is_active=False,
+        inactive_user = (
+            User.objects.create_user(
+                email="inactive@test.com",
+                password="InactivePass123!",
+                first_name="Inactive",
+                last_name="User",
+                role=User.Role.STAFF,
+                status=User.Status.INACTIVE,
+                is_active=False,
+            )
         )
 
         self.authenticate(self.admin)
@@ -423,9 +749,12 @@ class WorkflowAPITests(APITestCase):
         response = self.client.post(
             "/api/v1/tasks/",
             {
-                "workflow": str(self.workflow.id),
-                "title": "Invalid Assignment",
-                "assigned_to": str(inactive_user.id),
+                "workflow":
+                    str(self.workflow.id),
+                "title":
+                    "Invalid Assignment",
+                "assigned_to":
+                    str(inactive_user.id),
             },
             format="json",
         )

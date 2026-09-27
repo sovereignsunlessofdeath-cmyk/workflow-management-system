@@ -7,6 +7,7 @@ from workflows.execution_serializers import (
 )
 from workflows.models import Task, TaskDependency, WorkflowStage
 from workflows.permissions import CanManageWorkflows
+from audit.services import audit_dependency_created
 
 
 class WorkflowStageListCreateView(generics.ListCreateAPIView):
@@ -75,7 +76,14 @@ class TaskDependencyListCreateView(
                 "Only Administrators and Managers can create dependencies."
             )
 
-        serializer.save()
+        dependency = serializer.save()
+
+        audit_dependency_created(
+            dependency.task,
+            dependency.depends_on,
+            actor=user,
+            request=self.request,
+        )
 
 
 class TaskDependencyDetailView(

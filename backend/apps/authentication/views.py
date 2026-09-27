@@ -5,6 +5,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
 from apps.users.models import User
+from audit.services import audit_login, audit_logout, audit_user_created
 
 from apps.authentication.serializers import (
     ForgotPasswordSerializer,
@@ -23,6 +24,12 @@ class RegisterView(APIView):
         serializer.is_valid(raise_exception=True)
 
         user = serializer.save()
+
+        audit_user_created(
+            user,
+            actor=user,
+            request=request,
+        )
 
         return Response(
             {
@@ -82,6 +89,11 @@ class LoginView(APIView):
 
         result = serializer.validated_data
         user = result["user"]
+
+        audit_login(
+            user,
+            request=request,
+        )
 
         return Response(
             {
@@ -217,6 +229,11 @@ class LogoutView(APIView):
                 },
                 status=status.HTTP_400_BAD_REQUEST,
             )
+
+        audit_logout(
+            request.user,
+            request=request,
+        )
 
         return Response(
             {

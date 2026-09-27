@@ -1,9 +1,46 @@
-from django.utils import timezone
-from rest_framework import generics
-from rest_framework.permissions import IsAuthenticated
-from rest_framework.exceptions import PermissionDenied
+from django.db import transaction
 
-from workflows.models import Task, Workflow
+from rest_framework import generics
+from rest_framework.exceptions import (
+    PermissionDenied,
+    ValidationError,
+)
+from rest_framework.permissions import (
+    IsAuthenticated,
+)
+from rest_framework.response import Response
+from rest_framework.views import APIView
+
+from audit.models import AuditLog
+from audit.services import (
+    audit_task_assigned,
+    audit_task_cancelled,
+    audit_task_completed,
+    audit_task_created,
+    audit_task_updated,
+    audit_workflow_archived,
+    audit_workflow_created,
+    record_audit,
+    serialize_task,
+    serialize_workflow,
+)
+
+from notifications.services import (
+    notify_task_assigned,
+    notify_task_completed,
+    notify_task_status_changed,
+    notify_workflow_archived,
+    notify_workflow_created,
+)
+
+from workflows.execution_services import (
+    complete_task,
+    reopen_task,
+)
+from workflows.models import (
+    Task,
+    Workflow,
+)
 from workflows.permissions import (
     CanAccessTasks,
     CanManageWorkflows,
@@ -14,32 +51,84 @@ from workflows.serializers import (
 )
 
 
-class WorkflowListCreateView(generics.ListCreateAPIView):
-    queryset = Workflow.objects.select_related(
-        "created_by"
-    ).all()
-    serializer_class = WorkflowSerializer
+class WorkflowListCreateView(
+    generics.ListCreateAPIView
+):
+    queryset = (
+        Workflow.objects
+        .select_related(
+            "created_by"
+        )
+        .all()
+    )
+
+    serializer_class = (
+        WorkflowSerializer
+    )
+
     permission_classes = [
         IsAuthenticated,
         CanManageWorkflows,
     ]
 
-    def perform_create(self, serializer):
-        serializer.save(created_by=self.request.user)
+    def perform_create(
+        self,
+        serializer,
+    ):
+        workflow = (
+            serializer.save(
+                created_by=
+                    self.request.user
+            )
+        )
+
+        audit_workflow_created(
+            workflow,
+            actor=
+                self.request.user,
+            request=
+                self.request,
+        )
+
+        notify_workflow_created(
+            workflow
+        )
 
 
-class WorkflowDetailView(generics.RetrieveUpdateDestroyAPIView):
-    queryset = Workflow.objects.select_related(
-        "created_by"
-    ).all()
-    serializer_class = WorkflowSerializer
+class WorkflowDetailView(
+    generics.RetrieveUpdateDestroyAPIView
+):
+    queryset = (
+        Workflow.objects
+        .select_related(
+            "created_by"
+        )
+        .all()
+    )
+
+    serializer_class = (
+        WorkflowSerializer
+    )
+
     permission_classes = [
         IsAuthenticated,
         CanManageWorkflows,
     ]
 
-    def perform_destroy(self, instance):
-        instance.status = Workflow.Status.ARCHIVED
+    def perform_destroy(
+        self,
+        instance,
+    ):
+        before = (
+            serialize_workflow(
+                instance
+            )
+        )
+
+        instance.status = (
+            Workflow.Status.ARCHIVED
+        )
+
         instance.save(
             update_fields=[
                 "status",
@@ -47,65 +136,47 @@ class WorkflowDetailView(generics.RetrieveUpdateDestroyAPIView):
             ]
         )
 
+        audit_workflow_archived(
+            instance,
+            actor=
+                self.request.user,
+            before=before,
+            request=
+                self.request,
+        )
 
-class TaskListCreateView(generics.ListCreateAPIView):
-    serializer_class = TaskSerializer
+        notify_workflow_archived(
+            instance
+        )
+
+
+class TaskListCreateView(
+    generics.ListCreateAPIView
+):
+    serializer_class = (
+        TaskSerializer
+    )
+
     permission_classes = [
         IsAuthenticated,
         CanAccessTasks,
     ]
 
-    def get_queryset(self):
-        user = self.request.user
+    def get_queryset(
+        self,
+    ):
+        user = (
+            self.request.user
+        )
 
-        if user.role in [
-            user.Role.ADMINISTRATOR,
-            user.Role.MANAGER,
-            user.Role.APPROVER,
-        ]:
-            return Task.objects.select_related(
+        queryset = (
+            Task.objects
+            .select_related(
                 "workflow",
                 "created_by",
                 "assigned_to",
                 "stage",
-            ).all()
-
-        return Task.objects.select_related(
-            "workflow",
-            "created_by",
-            "assigned_to",
-            "stage",
-        ).filter(
-            assigned_to=user
-        )
-
-    def perform_create(self, serializer):
-        if self.request.user.role not in [
-            self.request.user.Role.ADMINISTRATOR,
-            self.request.user.Role.MANAGER,
-        ]:
-            raise PermissionDenied(
-                "Only Administrators and Managers can create tasks."
             )
-
-        serializer.save(created_by=self.request.user)
-
-
-class TaskDetailView(generics.RetrieveUpdateDestroyAPIView):
-    serializer_class = TaskSerializer
-    permission_classes = [
-        IsAuthenticated,
-        CanAccessTasks,
-    ]
-
-    def get_queryset(self):
-        user = self.request.user
-
-        queryset = Task.objects.select_related(
-            "workflow",
-            "created_by",
-            "assigned_to",
-            "stage",
         )
 
         if user.role in [
@@ -113,40 +184,254 @@ class TaskDetailView(generics.RetrieveUpdateDestroyAPIView):
             user.Role.MANAGER,
             user.Role.APPROVER,
         ]:
-            return queryset.all()
+            return (
+                queryset.all()
+            )
 
         return queryset.filter(
             assigned_to=user
         )
 
-    def perform_update(self, serializer):
-        user = self.request.user
+    def perform_create(
+        self,
+        serializer,
+    ):
+        user = (
+            self.request.user
+        )
 
-        if user.role == user.Role.STAFF:
+        if user.role not in [
+            user.Role.ADMINISTRATOR,
+            user.Role.MANAGER,
+        ]:
+            raise PermissionDenied(
+                "Only Administrators and Managers can create tasks."
+            )
+
+        task = (
+            serializer.save(
+                created_by=user
+            )
+        )
+
+        audit_task_created(
+            task,
+            actor=user,
+            request=
+                self.request,
+        )
+
+        if task.assigned_to:
+            audit_task_assigned(
+                task,
+                actor=user,
+                request=
+                    self.request,
+            )
+
+            notify_task_assigned(
+                task
+            )
+
+
+class TaskDetailView(
+    generics.RetrieveUpdateDestroyAPIView
+):
+    serializer_class = (
+        TaskSerializer
+    )
+
+    permission_classes = [
+        IsAuthenticated,
+        CanAccessTasks,
+    ]
+
+    def get_queryset(
+        self,
+    ):
+        user = (
+            self.request.user
+        )
+
+        queryset = (
+            Task.objects
+            .select_related(
+                "workflow",
+                "created_by",
+                "assigned_to",
+                "stage",
+            )
+        )
+
+        if user.role in [
+            user.Role.ADMINISTRATOR,
+            user.Role.MANAGER,
+            user.Role.APPROVER,
+        ]:
+            return (
+                queryset.all()
+            )
+
+        return queryset.filter(
+            assigned_to=user
+        )
+
+    @transaction.atomic
+    def perform_update(
+        self,
+        serializer,
+    ):
+        user = (
+            self.request.user
+        )
+
+        if (
+            user.role ==
+            user.Role.STAFF
+        ):
             allowed_fields = {
                 "status",
             }
 
             incoming_fields = set(
-                serializer.validated_data.keys()
+                serializer
+                .validated_data
+                .keys()
             )
 
-            if not incoming_fields.issubset(
-                allowed_fields
+            if not (
+                incoming_fields
+                .issubset(
+                    allowed_fields
+                )
             ):
                 raise PermissionDenied(
                     "Staff can only update task status."
                 )
 
-        task = serializer.save()
+        current_task = (
+            self.get_object()
+        )
 
-        if task.status == Task.Status.COMPLETED:
-            from workflows.execution_services import complete_task
+        old_status = (
+            current_task.status
+        )
 
-            complete_task(task)
+        old_assigned_to_id = (
+            current_task
+            .assigned_to_id
+        )
 
-        elif task.completed_at is not None:
+        before = (
+            serialize_task(
+                current_task
+            )
+        )
+
+        requested_status = (
+            serializer
+            .validated_data
+            .get(
+                "status",
+                old_status,
+            )
+        )
+
+        completing_task = (
+            requested_status ==
+            Task.Status.COMPLETED
+            and
+            old_status !=
+            Task.Status.COMPLETED
+        )
+
+        if completing_task:
+            task = serializer.save(
+                status=old_status
+            )
+
+            complete_task(
+                task
+            )
+
+            task.refresh_from_db()
+
+        else:
+            task = (
+                serializer.save()
+            )
+
+        assignment_changed = (
+            old_assigned_to_id !=
+            task.assigned_to_id
+            and
+            task.assigned_to
+        )
+
+        status_changed = (
+            old_status !=
+            task.status
+        )
+
+        if completing_task:
+            audit_task_completed(
+                task,
+                actor=user,
+                before=before,
+                request=
+                    self.request,
+            )
+
+            if status_changed:
+                notify_task_status_changed(
+                    task,
+                    old_status,
+                    task.status,
+                )
+
+            notify_task_completed(
+                task
+            )
+
+            return
+
+        audit_task_updated(
+            task,
+            actor=user,
+            before=before,
+            request=
+                self.request,
+        )
+
+        if assignment_changed:
+            audit_task_assigned(
+                task,
+                actor=user,
+                before=before,
+                request=
+                    self.request,
+            )
+
+            notify_task_assigned(
+                task
+            )
+
+        if status_changed:
+            notify_task_status_changed(
+                task,
+                old_status,
+                task.status,
+            )
+
+        if (
+            status_changed and
+            task.status !=
+            Task.Status.COMPLETED and
+            task.completed_at
+            is not None
+        ):
             task.completed_at = None
+
             task.save(
                 update_fields=[
                     "completed_at",
@@ -154,8 +439,13 @@ class TaskDetailView(generics.RetrieveUpdateDestroyAPIView):
                 ]
             )
 
-    def perform_destroy(self, instance):
-        user = self.request.user
+    def perform_destroy(
+        self,
+        instance,
+    ):
+        user = (
+            self.request.user
+        )
 
         if user.role not in [
             user.Role.ADMINISTRATOR,
@@ -165,10 +455,157 @@ class TaskDetailView(generics.RetrieveUpdateDestroyAPIView):
                 "Only Administrators and Managers can delete tasks."
             )
 
-        instance.status = Task.Status.CANCELLED
+        if (
+            instance.status ==
+            Task.Status.COMPLETED
+        ):
+            raise ValidationError(
+                {
+                    "detail": (
+                        "Completed tasks are locked "
+                        "and cannot be cancelled. "
+                        "Reopen the task first."
+                    )
+                }
+            )
+
+        before = (
+            serialize_task(
+                instance
+            )
+        )
+
+        instance.status = (
+            Task.Status.CANCELLED
+        )
+
         instance.save(
             update_fields=[
                 "status",
                 "updated_at",
             ]
+        )
+
+        audit_task_cancelled(
+            instance,
+            actor=user,
+            before=before,
+            request=
+                self.request,
+        )
+
+
+class TaskReopenView(
+    APIView
+):
+    permission_classes = [
+        IsAuthenticated,
+    ]
+
+    @transaction.atomic
+    def post(
+        self,
+        request,
+        pk,
+    ):
+        user = (
+            request.user
+        )
+
+        if (
+            user.role !=
+            user.Role.ADMINISTRATOR
+        ):
+            raise PermissionDenied(
+                "Only Administrators can reopen completed tasks."
+            )
+
+        try:
+            task = (
+                Task.objects
+                .select_related(
+                    "workflow",
+                    "created_by",
+                    "assigned_to",
+                    "stage",
+                )
+                .get(
+                    pk=pk
+                )
+            )
+        except Task.DoesNotExist:
+            return Response(
+                {
+                    "detail":
+                        "Task not found."
+                },
+                status=404,
+            )
+
+        reason = str(
+            request.data.get(
+                "reason",
+                "",
+            )
+        ).strip()
+
+        if not reason:
+            raise ValidationError(
+                {
+                    "reason": (
+                        "A reason is required "
+                        "to reopen a completed task."
+                    )
+                }
+            )
+
+        before = (
+            serialize_task(
+                task
+            )
+        )
+
+        old_status = (
+            task.status
+        )
+
+        task = reopen_task(
+            task
+        )
+
+        task.refresh_from_db()
+
+        record_audit(
+            action=
+                AuditLog.Action.TASK_UPDATED,
+            actor=user,
+            target=task,
+            description=(
+                f'Task "{task.title}" '
+                "was reopened."
+            ),
+            before=before,
+            after=
+                serialize_task(
+                    task
+                ),
+            metadata={
+                "operation":
+                    "TASK_REOPENED",
+                "reason":
+                    reason,
+            },
+            request=request,
+        )
+
+        notify_task_status_changed(
+            task,
+            old_status,
+            task.status,
+        )
+
+        return Response(
+            TaskSerializer(
+                task
+            ).data
         )

@@ -1,6 +1,7 @@
 from django.urls import path
 
 from apps.users.views import (
+    AssignableUserListView,
     UserDetailView,
     UserListCreateView,
 )
@@ -11,6 +12,11 @@ urlpatterns = [
         "",
         UserListCreateView.as_view(),
         name="user-list-create",
+    ),
+    path(
+        "assignable/",
+        AssignableUserListView.as_view(),
+        name="assignable-user-list",
     ),
     path(
         "<uuid:pk>/",

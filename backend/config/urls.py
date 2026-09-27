@@ -19,4 +19,19 @@ urlpatterns = [
         "api/v1/",
         include("workflows.urls"),
     ),
+
+    path(
+        "api/v1/",
+        include("notifications.urls"),
+    ),
+
+    path(
+        "api/v1/",
+        include("audit.urls"),
+    ),
+
+    path(
+        "api/v1/",
+        include("dashboard.urls"),
+    ),
 ]
