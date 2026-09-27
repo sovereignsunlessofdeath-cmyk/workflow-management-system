@@ -1,8 +1,10 @@
 from datetime import timedelta
 
+import resend
+
 from django.conf import settings
 from django.contrib.auth import authenticate
-from django.core.mail import send_mail
+from django.db import transaction
 from django.utils import timezone
 from rest_framework_simplejwt.tokens import RefreshToken
 
@@ -16,13 +18,42 @@ from apps.users.models import User
 class AuthenticationService:
 
     @staticmethod
+    def _send_email(
+        *,
+        to_email: str,
+        subject: str,
+        html: str,
+    ):
+        if not settings.RESEND_API_KEY:
+            raise ValueError(
+                "RESEND_API_KEY is not configured."
+            )
+
+        resend.api_key = settings.RESEND_API_KEY
+
+        resend.Emails.send(
+            {
+                "from": settings.RESEND_FROM_EMAIL,
+                "to": [to_email],
+                "subject": subject,
+                "html": html,
+            }
+        )
+
+    @staticmethod
     def user_exists(email):
         return User.objects.filter(
             email__iexact=email
         ).exists()
 
     @staticmethod
-    def register(email, password, first_name, last_name):
+    @transaction.atomic
+    def register(
+        email,
+        password,
+        first_name,
+        last_name,
+    ):
         user = User.objects.create_user(
             email=email,
             password=password,
@@ -46,21 +77,21 @@ class AuthenticationService:
             f"{verification.token}/"
         )
 
-        send_mail(
+        AuthenticationService._send_email(
+            to_email=user.email,
             subject="Verify your WMS account",
-            message=(
-                f"Hello {user.first_name},\n\n"
-                "Welcome to WMS.\n\n"
-                "Please verify your email address by clicking "
-                "the link below:\n\n"
-                f"{verification_url}\n\n"
-                "This link expires in 24 hours.\n\n"
-                "If you did not create this account, you can "
-                "ignore this email."
+            html=(
+                f"<p>Hello {user.first_name},</p>"
+                "<p>Welcome to WMS.</p>"
+                "<p>Please verify your email address by clicking "
+                "the link below:</p>"
+                f'<p><a href="{verification_url}">'
+                "Verify your account"
+                "</a></p>"
+                "<p>This link expires in 24 hours.</p>"
+                "<p>If you did not create this account, "
+                "you can ignore this email.</p>"
             ),
-            from_email=settings.DEFAULT_FROM_EMAIL,
-            recipient_list=[user.email],
-            fail_silently=False,
         )
 
         return user
@@ -71,52 +102,62 @@ class AuthenticationService:
             email__iexact=email
         ).first()
 
-        if user:
-            PasswordResetToken.objects.filter(
-                user=user,
-                used_at__isnull=True,
-            ).update(
-                used_at=timezone.now()
-            )
+        if not user:
+            return
 
-            reset_token = PasswordResetToken.objects.create(
-                user=user,
-                expires_at=timezone.now()
-                + timedelta(
-                    hours=settings.PASSWORD_RESET_TIMEOUT_HOURS
-                ),
-            )
+        PasswordResetToken.objects.filter(
+            user=user,
+            used_at__isnull=True,
+        ).update(
+            used_at=timezone.now()
+        )
 
-            reset_url = (
-                f"{settings.FRONTEND_URL}/reset-password/"
-                f"{reset_token.token}/"
-            )
+        reset_token = PasswordResetToken.objects.create(
+            user=user,
+            expires_at=timezone.now()
+            + timedelta(
+                hours=settings.PASSWORD_RESET_TIMEOUT_HOURS
+            ),
+        )
 
-            send_mail(
-                subject="Reset your WMS password",
-                message=(
-                    f"Hello {user.first_name},\n\n"
-                    "We received a request to reset your WMS password.\n\n"
-                    "Use the link below to create a new password:\n\n"
-                    f"{reset_url}\n\n"
-                    "This link expires in "
-                    f"{settings.PASSWORD_RESET_TIMEOUT_HOURS} hours.\n\n"
-                    "If you did not request a password reset, "
-                    "you can safely ignore this email."
-                ),
-                from_email=settings.DEFAULT_FROM_EMAIL,
-                recipient_list=[user.email],
-                fail_silently=False,
-            )
+        reset_url = (
+            f"{settings.FRONTEND_URL}/reset-password/"
+            f"{reset_token.token}/"
+        )
+
+        AuthenticationService._send_email(
+            to_email=user.email,
+            subject="Reset your WMS password",
+            html=(
+                f"<p>Hello {user.first_name},</p>"
+                "<p>We received a request to reset your "
+                "WMS password.</p>"
+                "<p>Use the link below to create a new password:</p>"
+                f'<p><a href="{reset_url}">'
+                "Reset your password"
+                "</a></p>"
+                "<p>This link expires in "
+                f"{settings.PASSWORD_RESET_TIMEOUT_HOURS} hour(s).</p>"
+                "<p>If you did not request a password reset, "
+                "you can safely ignore this email.</p>"
+            ),
+        )
 
     @staticmethod
-    def reset_password(token, new_password):
+    def reset_password(
+        token,
+        new_password,
+    ):
         try:
-            reset_token = PasswordResetToken.objects.select_related(
-                "user"
-            ).get(token=token)
+            reset_token = (
+                PasswordResetToken.objects
+                .select_related("user")
+                .get(token=token)
+            )
         except PasswordResetToken.DoesNotExist:
-            raise ValueError("Invalid password reset link.")
+            raise ValueError(
+                "Invalid password reset link."
+            )
 
         if reset_token.used_at is not None:
             raise ValueError(
@@ -130,48 +171,87 @@ class AuthenticationService:
 
         user = reset_token.user
 
-        user.set_password(new_password)
-        user.save(update_fields=["password", "updated_at"])
+        user.set_password(
+            new_password
+        )
+
+        user.save(
+            update_fields=[
+                "password",
+                "updated_at",
+            ]
+        )
 
         reset_token.used_at = timezone.now()
-        reset_token.save(update_fields=["used_at"])
+
+        reset_token.save(
+            update_fields=[
+                "used_at",
+            ]
+        )
 
         return user
 
     @staticmethod
     def verify_email(token):
         try:
-            verification = EmailVerification.objects.select_related(
-                "user"
-            ).get(token=token)
+            verification = (
+                EmailVerification.objects
+                .select_related("user")
+                .get(token=token)
+            )
         except EmailVerification.DoesNotExist:
-            raise ValueError("Invalid verification link.")
+            raise ValueError(
+                "Invalid verification link."
+            )
 
         if verification.verified_at is not None:
-            raise ValueError("This email has already been verified.")
+            raise ValueError(
+                "This email has already been verified."
+            )
 
         if timezone.now() > verification.expires_at:
-            raise ValueError("This verification link has expired.")
+            raise ValueError(
+                "This verification link has expired."
+            )
 
         user = verification.user
 
         verification.verified_at = timezone.now()
-        verification.save(update_fields=["verified_at"])
+
+        verification.save(
+            update_fields=[
+                "verified_at",
+            ]
+        )
 
         user.is_active = True
         user.status = User.Status.ACTIVE
-        user.save(update_fields=["is_active", "status", "updated_at"])
+
+        user.save(
+            update_fields=[
+                "is_active",
+                "status",
+                "updated_at",
+            ]
+        )
 
         return user
 
     @staticmethod
-    def login(email, password):
+    def login(
+        email,
+        password,
+    ):
         user = User.objects.filter(
             email__iexact=email
         ).first()
 
         if user and not user.is_active:
-            if user.status == User.Status.INACTIVE:
+            if (
+                user.status
+                == User.Status.INACTIVE
+            ):
                 raise ValueError(
                     "Please verify your email before logging in."
                 )
@@ -186,23 +266,40 @@ class AuthenticationService:
         )
 
         if user is None:
-            raise ValueError("Invalid email or password.")
+            raise ValueError(
+                "Invalid email or password."
+            )
 
         if user.status != User.Status.ACTIVE:
-            raise ValueError("Your account is not active.")
+            raise ValueError(
+                "Your account is not active."
+            )
 
         if not user.is_active:
-            raise ValueError("Your account is inactive.")
+            raise ValueError(
+                "Your account is inactive."
+            )
 
-        refresh = RefreshToken.for_user(user)
+        refresh = RefreshToken.for_user(
+            user
+        )
 
         return {
             "user": user,
-            "access": str(refresh.access_token),
-            "refresh": str(refresh),
+            "access": str(
+                refresh.access_token
+            ),
+            "refresh": str(
+                refresh
+            ),
         }
 
     @staticmethod
-    def logout(refresh_token):
-        token = RefreshToken(refresh_token)
+    def logout(
+        refresh_token,
+    ):
+        token = RefreshToken(
+            refresh_token
+        )
+
         token.blacklist()
