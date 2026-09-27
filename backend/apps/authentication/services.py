@@ -40,36 +40,36 @@ class AuthenticationService:
             }
         )
 
-@staticmethod
-def user_exists(email):
-    user = (
-        User.objects
-        .filter(email__iexact=email)
-        .first()
-    )
-
-    if not user:
-        return False
-
-    if (
-        not user.is_active
-        and user.status == User.Status.INACTIVE
-    ):
-        verification = (
-            EmailVerification.objects
-            .filter(user=user)
+    @staticmethod
+    def user_exists(email):
+        user = (
+            User.objects
+            .filter(email__iexact=email)
             .first()
         )
 
-        if (
-            verification
-            and verification.verified_at is None
-            and timezone.now() > verification.expires_at
-        ):
-            user.delete()
+        if not user:
             return False
 
-    return True
+        if (
+            not user.is_active
+            and user.status == User.Status.INACTIVE
+        ):
+            verification = (
+                EmailVerification.objects
+                .filter(user=user)
+                .first()
+            )
+
+            if (
+                verification
+                and verification.verified_at is None
+                and timezone.now() > verification.expires_at
+            ):
+                user.delete()
+                return False
+
+        return True
 
     @staticmethod
     @transaction.atomic
@@ -91,9 +91,11 @@ def user_exists(email):
 
         verification = EmailVerification.objects.create(
             user=user,
-            expires_at=timezone.now()
-            + timedelta(
-                hours=settings.EMAIL_VERIFICATION_TIMEOUT_HOURS
+            expires_at=(
+                timezone.now()
+                + timedelta(
+                    hours=settings.EMAIL_VERIFICATION_TIMEOUT_HOURS
+                )
             ),
         )
 
@@ -122,10 +124,63 @@ def user_exists(email):
         return user
 
     @staticmethod
+    @transaction.atomic
+    def register_admin(
+        email,
+        password,
+        first_name,
+        last_name,
+    ):
+        user = User.objects.create_user(
+            email=email,
+            password=password,
+            first_name=first_name,
+            last_name=last_name,
+            role=User.Role.ADMINISTRATOR,
+            status=User.Status.INACTIVE,
+            is_active=False,
+        )
+
+        verification = EmailVerification.objects.create(
+            user=user,
+            expires_at=(
+                timezone.now()
+                + timedelta(
+                    hours=settings.EMAIL_VERIFICATION_TIMEOUT_HOURS
+                )
+            ),
+        )
+
+        verification_url = (
+            f"{settings.FRONTEND_URL}/verify-email/"
+            f"{verification.token}/"
+        )
+
+        AuthenticationService._send_email(
+            to_email=user.email,
+            subject="Verify your WMS administrator account",
+            html=(
+                f"<p>Hello {user.first_name},</p>"
+                "<p>Your WMS administrator account has been created.</p>"
+                "<p>Please verify your email address:</p>"
+                f'<p><a href="{verification_url}">'
+                "Verify administrator account"
+                "</a></p>"
+                "<p>This link expires in 1 hour.</p>"
+                "<p>If you did not create this account, "
+                "you can ignore this email.</p>"
+            ),
+        )
+
+        return user
+
+    @staticmethod
     def request_password_reset(email):
-        user = User.objects.filter(
-            email__iexact=email
-        ).first()
+        user = (
+            User.objects
+            .filter(email__iexact=email)
+            .first()
+        )
 
         if not user:
             return
@@ -139,9 +194,11 @@ def user_exists(email):
 
         reset_token = PasswordResetToken.objects.create(
             user=user,
-            expires_at=timezone.now()
-            + timedelta(
-                hours=settings.PASSWORD_RESET_TIMEOUT_HOURS
+            expires_at=(
+                timezone.now()
+                + timedelta(
+                    hours=settings.PASSWORD_RESET_TIMEOUT_HOURS
+                )
             ),
         )
 
@@ -235,13 +292,13 @@ def user_exists(email):
                 "This email has already been verified."
             )
 
-         if timezone.now() > verification.expires_at:
-             user = verification.user
-             user.delete()
+        if timezone.now() > verification.expires_at:
+            user = verification.user
+            user.delete()
 
-             raise ValueError(
-               "This verification link has expired. "
-               "Please register again."
+            raise ValueError(
+                "This verification link has expired. "
+                "Please register again."
             )
 
         user = verification.user
@@ -272,9 +329,11 @@ def user_exists(email):
         email,
         password,
     ):
-        user = User.objects.filter(
-            email__iexact=email
-        ).first()
+        user = (
+            User.objects
+            .filter(email__iexact=email)
+            .first()
+        )
 
         if user and not user.is_active:
             if (
@@ -332,50 +391,3 @@ def user_exists(email):
         )
 
         token.blacklist()
-
-        @staticmethod
-    @transaction.atomic
-    def register_admin(
-        email,
-        password,
-        first_name,
-        last_name,
-    ):
-        user = User.objects.create_user(
-            email=email,
-            password=password,
-            first_name=first_name,
-            last_name=last_name,
-            role=User.Role.ADMINISTRATOR,
-            status=User.Status.INACTIVE,
-            is_active=False,
-        )
-
-        verification = EmailVerification.objects.create(
-            user=user,
-            expires_at=timezone.now()
-            + timedelta(
-                hours=settings.EMAIL_VERIFICATION_TIMEOUT_HOURS
-            ),
-        )
-
-        verification_url = (
-            f"{settings.FRONTEND_URL}/verify-email/"
-            f"{verification.token}/"
-        )
-
-        AuthenticationService._send_email(
-            to_email=user.email,
-            subject="Verify your WMS administrator account",
-            html=(
-                f"<p>Hello {user.first_name},</p>"
-                "<p>Your WMS administrator account has been created.</p>"
-                "<p>Please verify your email address:</p>"
-                f'<p><a href="{verification_url}">'
-                "Verify administrator account"
-                "</a></p>"
-                "<p>This link expires in 24 hours.</p>"
-            ),
-        )
-
-        return user    
