@@ -20,6 +20,14 @@ export type RegisterRequest = {
   last_name: string;
 };
 
+export type AdminRegisterRequest = {
+  email: string;
+  password: string;
+  first_name: string;
+  last_name: string;
+  admin_pin: string;
+};
+
 export type AuthTokens = {
   access: string;
   refresh: string;

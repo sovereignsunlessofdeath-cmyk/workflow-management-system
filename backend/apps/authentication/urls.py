@@ -10,6 +10,7 @@ from apps.authentication.views import (
     LogoutView,
     MeView,
     RegisterView,
+    AdminRegisterView
     ResetPasswordView,
     VerifyEmailView,
 )
@@ -17,6 +18,11 @@ from apps.authentication.views import (
 
 urlpatterns = [
     path("register/", RegisterView.as_view(), name="register"),
+    path(
+    "admin-register/",
+    AdminRegisterView.as_view(),
+    name="admin-register",
+    ),
     path(
         "verify-email/<uuid:token>/",
         VerifyEmailView.as_view(),

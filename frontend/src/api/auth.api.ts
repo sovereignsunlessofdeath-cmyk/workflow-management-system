@@ -4,6 +4,7 @@ import type {
   LoginResponse,
   MeResponse,
   RegisterRequest,
+  AdminRegisterRequest,
   RegisterResponse,
 } from "../types/auth";
 
@@ -12,6 +13,18 @@ export async function registerUser(payload: RegisterRequest) {
     "/auth/register/",
     payload,
   );
+
+  return response.data;
+}
+
+export async function registerAdmin(
+  payload: AdminRegisterRequest,
+) {
+  const response =
+    await api.post<RegisterResponse>(
+      "/auth/admin-register/",
+      payload,
+    );
 
   return response.data;
 }

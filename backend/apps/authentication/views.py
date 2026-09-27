@@ -8,6 +8,7 @@ from apps.users.models import User
 from audit.services import audit_login, audit_logout, audit_user_created
 
 from apps.authentication.serializers import (
+    AdminRegisterSerializer,
     ForgotPasswordSerializer,
     LoginSerializer,
     RegisterSerializer,
@@ -47,6 +48,42 @@ class RegisterView(APIView):
             status=status.HTTP_201_CREATED,
         )
 
+class AdminRegisterView(APIView):
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        serializer = AdminRegisterSerializer(
+            data=request.data
+        )
+
+        serializer.is_valid(
+            raise_exception=True
+        )
+
+        user = serializer.save()
+
+        audit_user_created(
+            user,
+            actor=user,
+            request=request,
+        )
+
+        return Response(
+            {
+                "data": {
+                    "id": str(user.id),
+                    "email": user.email,
+                    "first_name": user.first_name,
+                    "last_name": user.last_name,
+                    "role": user.role,
+                },
+                "message": (
+                    "Administrator registration successful. "
+                    "Please check your email to verify your account."
+                ),
+            },
+            status=status.HTTP_201_CREATED,
+        )
 
 class VerifyEmailView(APIView):
     permission_classes = [AllowAny]

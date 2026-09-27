@@ -28,6 +28,33 @@ class RegisterSerializer(serializers.Serializer):
     def create(self, validated_data):
         return AuthenticationService.register(**validated_data)
 
+class AdminRegisterSerializer(RegisterSerializer):
+    admin_pin = serializers.CharField(
+        write_only=True,
+        trim_whitespace=False,
+    )
+
+    def validate_admin_pin(self, value):
+        from django.conf import settings
+
+        if not settings.ADMIN_REGISTRATION_PIN:
+            raise serializers.ValidationError(
+                "Admin registration is not configured."
+            )
+
+        if value != settings.ADMIN_REGISTRATION_PIN:
+            raise serializers.ValidationError(
+                "Invalid administrator registration PIN."
+            )
+
+        return value
+
+    def create(self, validated_data):
+        validated_data.pop("admin_pin")
+
+        return AuthenticationService.register_admin(
+            **validated_data
+        )        
 
 class LoginSerializer(serializers.Serializer):
     email = serializers.EmailField()
