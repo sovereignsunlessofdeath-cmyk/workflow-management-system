@@ -17,31 +17,24 @@ export default function AuthShell({
   return (
     <div className="relative min-h-screen overflow-hidden bg-[#071126]">
       {/* Moving background */}
-      <motion.div
-        initial={{
-          scale: 1.05,
-          x: 0,
-          y: 0,
-        }}
-        animate={{
-          scale: [1.05, 1.1, 1.05],
-          x: [0, -20, 0],
-          y: [0, -10, 0],
-        }}
-        transition={{
-          duration: 18,
-          repeat: Infinity,
-          ease: "easeInOut",
-        }}
-        className="absolute inset-0"
-        style={{
-          backgroundImage:
-            "url('/media/auth-bg.jpg')",
-          backgroundSize: "cover",
-          backgroundPosition: "center",
-        }}
-      />
-
+<motion.div
+  initial={{
+    scale: 1.05,
+    x: 0,
+    y: 0,
+  }}
+  animate={{
+    scale: [1.05, 1.1, 1.05],
+    x: [0, -20, 0],
+    y: [0, -10, 0],
+  }}
+  transition={{
+    duration: 18,
+    repeat: Infinity,
+    ease: "easeInOut",
+  }}
+  className="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(59,130,246,0.22),transparent_35%),radial-gradient(circle_at_80%_80%,rgba(139,92,246,0.18),transparent_38%),linear-gradient(135deg,#071126,#0b1733,#071126)]"
+/>
       {/* Dark overlay */}
       <div className="absolute inset-0 bg-[#071126]/72" />
 
