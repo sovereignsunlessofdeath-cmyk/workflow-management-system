@@ -15,15 +15,11 @@ class CanManageWorkflows(BasePermission):
         if not user or not user.is_authenticated:
             return False
 
-        # Read-only access
+        # All authenticated users can view workflows.
         if request.method in SAFE_METHODS:
-            return user.role in [
-                user.Role.ADMINISTRATOR,
-                user.Role.MANAGER,
-                user.Role.APPROVER,
-            ]
+            return True
 
-        # Only Admins and Managers can modify workflows
+        # Only Administrators and Managers can modify workflows.
         return user.role in [
             user.Role.ADMINISTRATOR,
             user.Role.MANAGER,
