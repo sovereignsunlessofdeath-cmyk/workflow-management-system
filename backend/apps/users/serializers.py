@@ -41,7 +41,9 @@ class UserCreateSerializer(serializers.ModelSerializer):
         ]
 
     def validate_email(self, value):
-        if User.objects.filter(email__iexact=value).exists():
+        if User.objects.filter(
+            email__iexact=value
+        ).exists():
             raise serializers.ValidationError(
                 "An account with this email already exists."
             )
@@ -53,10 +55,21 @@ class UserCreateSerializer(serializers.ModelSerializer):
         return value
 
     def create(self, validated_data):
-        password = validated_data.pop("password")
+        password = validated_data.pop(
+            "password"
+        )
+
+        status = validated_data.get(
+            "status",
+            User.Status.ACTIVE,
+        )
 
         user = User.objects.create_user(
             password=password,
+            is_active=(
+                status
+                == User.Status.ACTIVE
+            ),
             **validated_data,
         )
 
@@ -75,10 +88,14 @@ class UserUpdateSerializer(serializers.ModelSerializer):
         ]
 
     def validate_email(self, value):
-        queryset = User.objects.filter(
-            email__iexact=value
-        ).exclude(
-            pk=self.instance.pk
+        queryset = (
+            User.objects
+            .filter(
+                email__iexact=value
+            )
+            .exclude(
+                pk=self.instance.pk
+            )
         )
 
         if queryset.exists():
@@ -87,3 +104,29 @@ class UserUpdateSerializer(serializers.ModelSerializer):
             )
 
         return value
+
+    def update(
+        self,
+        instance,
+        validated_data,
+    ):
+        status = validated_data.get(
+            "status",
+            instance.status,
+        )
+
+        for field, value in validated_data.items():
+            setattr(
+                instance,
+                field,
+                value,
+            )
+
+        instance.is_active = (
+            status
+            == User.Status.ACTIVE
+        )
+
+        instance.save()
+
+        return instance
