@@ -318,13 +318,21 @@ EMAIL_HOST_PASSWORD = os.getenv(
     "EMAIL_HOST_PASSWORD",
 )
 
-RESEND_API_KEY = os.getenv(
-    "RESEND_API_KEY",
+MAILJET_API_KEY = os.getenv(
+    "MAILJET_API_KEY",
 )
 
-RESEND_FROM_EMAIL = os.getenv(
-    "RESEND_FROM_EMAIL",
-    "onboarding@resend.dev",
+MAILJET_SECRET_KEY = os.getenv(
+    "MAILJET_SECRET_KEY",
+)
+
+MAILJET_FROM_EMAIL = os.getenv(
+    "MAILJET_FROM_EMAIL",
+)
+
+MAILJET_FROM_NAME = os.getenv(
+    "MAILJET_FROM_NAME",
+    "WMS",
 )
 
 DEFAULT_FROM_EMAIL = os.getenv(

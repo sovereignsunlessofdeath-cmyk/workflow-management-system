@@ -1,11 +1,10 @@
 from datetime import timedelta
 
-import resend
-
 from django.conf import settings
 from django.contrib.auth import authenticate
 from django.db import transaction
 from django.utils import timezone
+from mailjet_rest import Client
 from rest_framework_simplejwt.tokens import RefreshToken
 
 from apps.authentication.models import (
@@ -24,27 +23,75 @@ class AuthenticationService:
         subject: str,
         html: str,
     ):
-        if not settings.RESEND_API_KEY:
+        if not settings.MAILJET_API_KEY:
             raise ValueError(
-                "RESEND_API_KEY is not configured."
+                "MAILJET_API_KEY is not configured."
             )
 
-        resend.api_key = settings.RESEND_API_KEY
+        if not settings.MAILJET_SECRET_KEY:
+            raise ValueError(
+                "MAILJET_SECRET_KEY is not configured."
+            )
 
-        resend.Emails.send(
-            {
-                "from": settings.RESEND_FROM_EMAIL,
-                "to": [to_email],
-                "subject": subject,
-                "html": html,
-            }
+        mailjet = Client(
+            auth=(
+                settings.MAILJET_API_KEY,
+                settings.MAILJET_SECRET_KEY,
+            ),
+            version="v3.1",
         )
+
+        data = {
+            "Messages": [
+                {
+                    "From": {
+                        "Email":
+                            settings.MAILJET_FROM_EMAIL,
+                        "Name":
+                            settings.MAILJET_FROM_NAME,
+                    },
+                    "To": [
+                        {
+                            "Email":
+                                to_email,
+                        }
+                    ],
+                    "Subject":
+                        subject,
+                    "HTMLPart":
+                        html,
+                }
+            ]
+        }
+
+        result = (
+            mailjet.send.create(
+                data=data
+            )
+        )
+
+        if (
+            result.status_code
+            not in [
+                200,
+                201,
+            ]
+        ):
+            raise ValueError(
+                (
+                    "Mailjet email delivery failed. "
+                    f"Status code: "
+                    f"{result.status_code}"
+                )
+            )
 
     @staticmethod
     def user_exists(email):
         user = (
             User.objects
-            .filter(email__iexact=email)
+            .filter(
+                email__iexact=email
+            )
             .first()
         )
 
@@ -53,20 +100,29 @@ class AuthenticationService:
 
         if (
             not user.is_active
-            and user.status == User.Status.INACTIVE
+            and
+            user.status ==
+            User.Status.INACTIVE
         ):
             verification = (
                 EmailVerification.objects
-                .filter(user=user)
+                .filter(
+                    user=user
+                )
                 .first()
             )
 
             if (
                 verification
-                and verification.verified_at is None
-                and timezone.now() > verification.expires_at
+                and
+                verification.verified_at
+                is None
+                and
+                timezone.now() >
+                verification.expires_at
             ):
                 user.delete()
+
                 return False
 
         return True
@@ -79,45 +135,65 @@ class AuthenticationService:
         first_name,
         last_name,
     ):
-        user = User.objects.create_user(
-            email=email,
-            password=password,
-            first_name=first_name,
-            last_name=last_name,
-            role=User.Role.STAFF,
-            status=User.Status.INACTIVE,
-            is_active=False,
+        user = (
+            User.objects.create_user(
+                email=email,
+                password=password,
+                first_name=
+                    first_name,
+                last_name=
+                    last_name,
+                role=
+                    User.Role.STAFF,
+                status=
+                    User.Status.INACTIVE,
+                is_active=False,
+            )
         )
 
-        verification = EmailVerification.objects.create(
-            user=user,
-            expires_at=(
-                timezone.now()
-                + timedelta(
-                    hours=settings.EMAIL_VERIFICATION_TIMEOUT_HOURS
-                )
-            ),
+        verification = (
+            EmailVerification.objects
+            .create(
+                user=user,
+                expires_at=(
+                    timezone.now()
+                    + timedelta(
+                        hours=(
+                            settings
+                            .EMAIL_VERIFICATION_TIMEOUT_HOURS
+                        )
+                    )
+                ),
+            )
         )
 
         verification_url = (
-            f"{settings.FRONTEND_URL}/verify-email/"
+            f"{settings.FRONTEND_URL}"
+            f"/verify-email/"
             f"{verification.token}/"
         )
 
         AuthenticationService._send_email(
             to_email=user.email,
-            subject="Verify your WMS account",
+            subject=(
+                "Verify your WMS account"
+            ),
             html=(
-                f"<p>Hello {user.first_name},</p>"
+                f"<p>Hello "
+                f"{user.first_name},</p>"
                 "<p>Welcome to WMS.</p>"
-                "<p>Please verify your email address by clicking "
+                "<p>Please verify your "
+                "email address by clicking "
                 "the link below:</p>"
-                f'<p><a href="{verification_url}">'
+                f'<p><a href="'
+                f'{verification_url}">'
                 "Verify your account"
                 "</a></p>"
-                "<p>This link expires in 1 hour.</p>"
-                "<p>If you did not create this account, "
-                "you can ignore this email.</p>"
+                "<p>This link expires "
+                "in 1 hour.</p>"
+                "<p>If you did not create "
+                "this account, you can "
+                "ignore this email.</p>"
             ),
         )
 
@@ -131,97 +207,149 @@ class AuthenticationService:
         first_name,
         last_name,
     ):
-        user = User.objects.create_user(
-            email=email,
-            password=password,
-            first_name=first_name,
-            last_name=last_name,
-            role=User.Role.ADMINISTRATOR,
-            status=User.Status.INACTIVE,
-            is_active=False,
+        user = (
+            User.objects.create_user(
+                email=email,
+                password=password,
+                first_name=
+                    first_name,
+                last_name=
+                    last_name,
+                role=(
+                    User.Role
+                    .ADMINISTRATOR
+                ),
+                status=
+                    User.Status.INACTIVE,
+                is_active=False,
+            )
         )
 
-        verification = EmailVerification.objects.create(
-            user=user,
-            expires_at=(
-                timezone.now()
-                + timedelta(
-                    hours=settings.EMAIL_VERIFICATION_TIMEOUT_HOURS
-                )
-            ),
+        verification = (
+            EmailVerification.objects
+            .create(
+                user=user,
+                expires_at=(
+                    timezone.now()
+                    + timedelta(
+                        hours=(
+                            settings
+                            .EMAIL_VERIFICATION_TIMEOUT_HOURS
+                        )
+                    )
+                ),
+            )
         )
 
         verification_url = (
-            f"{settings.FRONTEND_URL}/verify-email/"
+            f"{settings.FRONTEND_URL}"
+            f"/verify-email/"
             f"{verification.token}/"
         )
 
         AuthenticationService._send_email(
             to_email=user.email,
-            subject="Verify your WMS administrator account",
+            subject=(
+                "Verify your WMS "
+                "administrator account"
+            ),
             html=(
-                f"<p>Hello {user.first_name},</p>"
-                "<p>Your WMS administrator account has been created.</p>"
-                "<p>Please verify your email address:</p>"
-                f'<p><a href="{verification_url}">'
-                "Verify administrator account"
+                f"<p>Hello "
+                f"{user.first_name},</p>"
+                "<p>Your WMS administrator "
+                "account has been created."
+                "</p>"
+                "<p>Please verify your "
+                "email address:</p>"
+                f'<p><a href="'
+                f'{verification_url}">'
+                "Verify administrator "
+                "account"
                 "</a></p>"
-                "<p>This link expires in 1 hour.</p>"
-                "<p>If you did not create this account, "
-                "you can ignore this email.</p>"
+                "<p>This link expires "
+                "in 1 hour.</p>"
+                "<p>If you did not create "
+                "this account, you can "
+                "ignore this email.</p>"
             ),
         )
 
         return user
 
     @staticmethod
-    def request_password_reset(email):
+    def request_password_reset(
+        email,
+    ):
         user = (
             User.objects
-            .filter(email__iexact=email)
+            .filter(
+                email__iexact=email
+            )
             .first()
         )
 
         if not user:
             return
 
-        PasswordResetToken.objects.filter(
-            user=user,
-            used_at__isnull=True,
-        ).update(
-            used_at=timezone.now()
+        (
+            PasswordResetToken.objects
+            .filter(
+                user=user,
+                used_at__isnull=True,
+            )
+            .update(
+                used_at=
+                    timezone.now()
+            )
         )
 
-        reset_token = PasswordResetToken.objects.create(
-            user=user,
-            expires_at=(
-                timezone.now()
-                + timedelta(
-                    hours=settings.PASSWORD_RESET_TIMEOUT_HOURS
-                )
-            ),
+        reset_token = (
+            PasswordResetToken.objects
+            .create(
+                user=user,
+                expires_at=(
+                    timezone.now()
+                    + timedelta(
+                        hours=(
+                            settings
+                            .PASSWORD_RESET_TIMEOUT_HOURS
+                        )
+                    )
+                ),
+            )
         )
 
         reset_url = (
-            f"{settings.FRONTEND_URL}/reset-password/"
+            f"{settings.FRONTEND_URL}"
+            f"/reset-password/"
             f"{reset_token.token}/"
         )
 
         AuthenticationService._send_email(
             to_email=user.email,
-            subject="Reset your WMS password",
+            subject=(
+                "Reset your WMS password"
+            ),
             html=(
-                f"<p>Hello {user.first_name},</p>"
-                "<p>We received a request to reset your "
-                "WMS password.</p>"
-                "<p>Use the link below to create a new password:</p>"
-                f'<p><a href="{reset_url}">'
+                f"<p>Hello "
+                f"{user.first_name},</p>"
+                "<p>We received a request "
+                "to reset your WMS "
+                "password.</p>"
+                "<p>Use the link below "
+                "to create a new password:"
+                "</p>"
+                f'<p><a href="'
+                f'{reset_url}">'
                 "Reset your password"
                 "</a></p>"
                 "<p>This link expires in "
-                f"{settings.PASSWORD_RESET_TIMEOUT_HOURS} hour(s).</p>"
-                "<p>If you did not request a password reset, "
-                "you can safely ignore this email.</p>"
+                f"{settings.PASSWORD_RESET_TIMEOUT_HOURS} "
+                "hour(s).</p>"
+                "<p>If you did not request "
+                "a password reset, you can "
+                "safely ignore this email."
+                "</p>"
             ),
         )
 
@@ -233,25 +361,48 @@ class AuthenticationService:
         try:
             reset_token = (
                 PasswordResetToken.objects
-                .select_related("user")
-                .get(token=token)
+                .select_related(
+                    "user"
+                )
+                .get(
+                    token=token
+                )
             )
-        except PasswordResetToken.DoesNotExist:
+
+        except (
+            PasswordResetToken
+            .DoesNotExist
+        ):
             raise ValueError(
                 "Invalid password reset link."
             )
 
-        if reset_token.used_at is not None:
+        if (
+            reset_token.used_at
+            is not None
+        ):
             raise ValueError(
-                "This password reset link has already been used."
+                (
+                    "This password reset "
+                    "link has already "
+                    "been used."
+                )
             )
 
-        if timezone.now() > reset_token.expires_at:
+        if (
+            timezone.now() >
+            reset_token.expires_at
+        ):
             raise ValueError(
-                "This password reset link has expired."
+                (
+                    "This password reset "
+                    "link has expired."
+                )
             )
 
-        user = reset_token.user
+        user = (
+            reset_token.user
+        )
 
         user.set_password(
             new_password
@@ -264,7 +415,9 @@ class AuthenticationService:
             ]
         )
 
-        reset_token.used_at = timezone.now()
+        reset_token.used_at = (
+            timezone.now()
+        )
 
         reset_token.save(
             update_fields=[
@@ -275,35 +428,64 @@ class AuthenticationService:
         return user
 
     @staticmethod
-    def verify_email(token):
+    def verify_email(
+        token,
+    ):
         try:
             verification = (
                 EmailVerification.objects
-                .select_related("user")
-                .get(token=token)
+                .select_related(
+                    "user"
+                )
+                .get(
+                    token=token
+                )
             )
-        except EmailVerification.DoesNotExist:
+
+        except (
+            EmailVerification
+            .DoesNotExist
+        ):
             raise ValueError(
                 "Invalid verification link."
             )
 
-        if verification.verified_at is not None:
+        if (
+            verification.verified_at
+            is not None
+        ):
             raise ValueError(
-                "This email has already been verified."
+                (
+                    "This email has "
+                    "already been verified."
+                )
             )
 
-        if timezone.now() > verification.expires_at:
-            user = verification.user
+        if (
+            timezone.now() >
+            verification.expires_at
+        ):
+            user = (
+                verification.user
+            )
+
             user.delete()
 
             raise ValueError(
-                "This verification link has expired. "
-                "Please register again."
+                (
+                    "This verification "
+                    "link has expired. "
+                    "Please register again."
+                )
             )
 
-        user = verification.user
+        user = (
+            verification.user
+        )
 
-        verification.verified_at = timezone.now()
+        verification.verified_at = (
+            timezone.now()
+        )
 
         verification.save(
             update_fields=[
@@ -312,7 +494,10 @@ class AuthenticationService:
         )
 
         user.is_active = True
-        user.status = User.Status.ACTIVE
+
+        user.status = (
+            User.Status.ACTIVE
+        )
 
         user.save(
             update_fields=[
@@ -331,17 +516,25 @@ class AuthenticationService:
     ):
         user = (
             User.objects
-            .filter(email__iexact=email)
+            .filter(
+                email__iexact=email
+            )
             .first()
         )
 
-        if user and not user.is_active:
+        if (
+            user and
+            not user.is_active
+        ):
             if (
-                user.status
-                == User.Status.INACTIVE
+                user.status ==
+                User.Status.INACTIVE
             ):
                 raise ValueError(
-                    "Please verify your email before logging in."
+                    (
+                        "Please verify your "
+                        "email before logging in."
+                    )
                 )
 
             raise ValueError(
@@ -358,7 +551,10 @@ class AuthenticationService:
                 "Invalid email or password."
             )
 
-        if user.status != User.Status.ACTIVE:
+        if (
+            user.status !=
+            User.Status.ACTIVE
+        ):
             raise ValueError(
                 "Your account is not active."
             )
@@ -368,26 +564,33 @@ class AuthenticationService:
                 "Your account is inactive."
             )
 
-        refresh = RefreshToken.for_user(
-            user
+        refresh = (
+            RefreshToken.for_user(
+                user
+            )
         )
 
         return {
-            "user": user,
-            "access": str(
-                refresh.access_token
-            ),
-            "refresh": str(
-                refresh
-            ),
+            "user":
+                user,
+            "access":
+                str(
+                    refresh.access_token
+                ),
+            "refresh":
+                str(
+                    refresh
+                ),
         }
 
     @staticmethod
     def logout(
         refresh_token,
     ):
-        token = RefreshToken(
-            refresh_token
+        token = (
+            RefreshToken(
+                refresh_token
+            )
         )
 
         token.blacklist()
