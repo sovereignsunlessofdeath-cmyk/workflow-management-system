@@ -7,6 +7,7 @@ import AppLayout from "./components/layout/AppLayout";
 
 import ProtectedRoute from "./router/ProtectedRoute";
 import EntryRoute from "./router/EntryRoute";
+import RoleRoute from "./router/RoleRoute";
 
 import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/RegisterPage";
@@ -32,32 +33,43 @@ import UsersPage from "./pages/UsersPage";
 import SettingsPage from "./pages/SettingsPage";
 import NotificationsPage from "./pages/NotificationsPage";
 
+
 export default function App() {
   return (
     <Routes>
       <Route
         path="/"
-        element={<EntryRoute />}
+        element={
+          <EntryRoute />
+        }
       />
 
       <Route
         path="/splash"
-        element={<SplashPage />}
+        element={
+          <SplashPage />
+        }
       />
 
       <Route
         path="/login"
-        element={<LoginPage />}
+        element={
+          <LoginPage />
+        }
       />
 
       <Route
         path="/register"
-        element={<RegisterPage />}
+        element={
+          <RegisterPage />
+        }
       />
 
       <Route
         path="/admin-register"
-        element={<AdminRegisterPage />}
+        element={
+          <AdminRegisterPage />
+        }
       />
 
       <Route
@@ -148,25 +160,35 @@ export default function App() {
           />
 
           <Route
-            path="/audit-log"
-            element={
-              <AuditLogPage />
-            }
-          />
-
-          <Route
-            path="/users"
-            element={
-              <UsersPage />
-            }
-          />
-
-          <Route
             path="/settings"
             element={
               <SettingsPage />
             }
           />
+
+          <Route
+            element={
+              <RoleRoute
+                allowedRoles={[
+                  "ADMINISTRATOR",
+                ]}
+              />
+            }
+          >
+            <Route
+              path="/audit-log"
+              element={
+                <AuditLogPage />
+              }
+            />
+
+            <Route
+              path="/users"
+              element={
+                <UsersPage />
+              }
+            />
+          </Route>
         </Route>
       </Route>
     </Routes>

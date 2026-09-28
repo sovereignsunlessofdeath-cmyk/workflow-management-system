@@ -21,6 +21,10 @@ import {
   useAuth,
 } from "../../context/AuthContext";
 
+import type {
+  UserRole,
+} from "../../types/auth";
+
 
 type SidebarProps = {
   collapsed: boolean;
@@ -28,7 +32,15 @@ type SidebarProps = {
 };
 
 
-const menuItems = [
+type MenuItem = {
+  label: string;
+  icon: typeof LayoutDashboard;
+  path: string;
+  roles?: UserRole[];
+};
+
+
+const menuItems: MenuItem[] = [
   {
     label: "Dashboard",
     icon: LayoutDashboard,
@@ -58,11 +70,17 @@ const menuItems = [
     label: "Audit Log",
     icon: ScrollText,
     path: "/audit-log",
+    roles: [
+      "ADMINISTRATOR",
+    ],
   },
   {
     label: "Users",
     icon: Users,
     path: "/users",
+    roles: [
+      "ADMINISTRATOR",
+    ],
   },
   {
     label: "Settings",
@@ -81,6 +99,7 @@ export default function Sidebar({
 
   const {
     logout,
+    user,
   } =
     useAuth();
 
@@ -94,6 +113,24 @@ export default function Sidebar({
   }
 
 
+  const visibleMenuItems =
+    menuItems.filter(
+      (item) => {
+        if (!item.roles) {
+          return true;
+        }
+
+        if (!user) {
+          return false;
+        }
+
+        return item.roles.includes(
+          user.role,
+        );
+      },
+    );
+
+
   return (
     <aside
       className={`wms-sidebar fixed inset-y-0 left-0 z-50 hidden overflow-hidden text-white transition-all duration-300 ease-out lg:flex lg:flex-col ${
@@ -102,8 +139,6 @@ export default function Sidebar({
           : "w-60"
       }`}
     >
-      {/* BRAND */}
-
       <div
         className={`relative z-10 flex h-24 items-center ${
           collapsed
@@ -140,7 +175,6 @@ export default function Sidebar({
           </div>
         )}
 
-
         {collapsed && (
           <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-white/15 bg-white/10 shadow-lg backdrop-blur">
             <Workflow
@@ -151,15 +185,9 @@ export default function Sidebar({
         )}
       </div>
 
-
-      {/* DIVIDER */}
-
       <div className="relative z-10 px-4">
         <div className="h-px bg-gradient-to-r from-transparent via-white/10 to-transparent" />
       </div>
-
-
-      {/* NAVIGATION */}
 
       <nav className="relative z-10 flex flex-1 flex-col gap-1.5 overflow-y-auto px-3 py-5">
         {!collapsed && (
@@ -168,20 +196,15 @@ export default function Sidebar({
           </p>
         )}
 
-
-        {menuItems.map(
+        {visibleMenuItems.map(
           (item) => {
             const Icon =
               item.icon;
 
             return (
               <NavLink
-                key={
-                  item.path
-                }
-                to={
-                  item.path
-                }
+                key={item.path}
+                to={item.path}
                 title={
                   collapsed
                     ? item.label
@@ -195,7 +218,6 @@ export default function Sidebar({
                     collapsed
                       ? "justify-center"
                       : "gap-3 px-3.5",
-
                     isActive
                       ? "bg-white/[0.11] text-white shadow-lg shadow-black/10 ring-1 ring-inset ring-white/[0.08]"
                       : "text-slate-400 hover:bg-white/[0.065] hover:text-white",
@@ -212,7 +234,6 @@ export default function Sidebar({
                       <span className="absolute inset-y-2 left-0 w-1 rounded-r-full bg-gradient-to-b from-cyan-400 to-blue-500 shadow-[0_0_14px_rgba(59,130,246,0.6)]" />
                     )}
 
-
                     <span
                       className={`relative flex h-8 w-8 shrink-0 items-center justify-center rounded-xl transition ${
                         isActive
@@ -221,21 +242,15 @@ export default function Sidebar({
                       }`}
                     >
                       <Icon
-                        size={
-                          19
-                        }
+                        size={19}
                       />
                     </span>
 
-
                     {!collapsed && (
                       <span className="relative text-[13px] font-medium">
-                        {
-                          item.label
-                        }
+                        {item.label}
                       </span>
                     )}
-
 
                     {!collapsed &&
                       isActive && (
@@ -249,15 +264,10 @@ export default function Sidebar({
         )}
       </nav>
 
-
-      {/* COLLAPSE CONTROL */}
-
       <div className="relative z-10 px-3 pb-3">
         <button
           type="button"
-          onClick={
-            onToggle
-          }
+          onClick={onToggle}
           className={`flex h-11 w-full items-center rounded-2xl border border-white/[0.07] bg-white/[0.045] text-slate-400 transition hover:border-white/10 hover:bg-white/[0.08] hover:text-white ${
             collapsed
               ? "justify-center"
@@ -287,15 +297,10 @@ export default function Sidebar({
         </button>
       </div>
 
-
-      {/* LOGOUT */}
-
       <div className="relative z-10 border-t border-white/[0.07] px-3 py-4">
         <button
           type="button"
-          onClick={
-            handleLogout
-          }
+          onClick={handleLogout}
           title={
             collapsed
               ? "Logout"

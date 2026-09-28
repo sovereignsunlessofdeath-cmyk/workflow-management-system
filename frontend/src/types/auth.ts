@@ -1,10 +1,16 @@
+export type UserRole =
+  | "STAFF"
+  | "APPROVER"
+  | "MANAGER"
+  | "ADMINISTRATOR";
+
 export type User = {
   id: string;
   email: string;
   first_name: string;
   last_name: string;
   full_name: string;
-  role: string;
+  role: UserRole;
   status: string;
 };
 
