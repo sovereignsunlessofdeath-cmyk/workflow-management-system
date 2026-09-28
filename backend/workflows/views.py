@@ -17,6 +17,7 @@ from audit.services import (
     audit_task_cancelled,
     audit_task_completed,
     audit_task_created,
+    audit_task_deleted,
     audit_task_updated,
     audit_workflow_archived,
     audit_workflow_created,
@@ -608,4 +609,66 @@ class TaskReopenView(
             TaskSerializer(
                 task
             ).data
+        )
+
+class TaskPermanentDeleteView(
+    APIView
+):
+    permission_classes = [
+        IsAuthenticated,
+    ]
+
+    @transaction.atomic
+    def delete(
+        self,
+        request,
+        pk,
+    ):
+        user = request.user
+
+        if (
+            user.role !=
+            user.Role.ADMINISTRATOR
+        ):
+            raise PermissionDenied(
+                "Only Administrators can permanently delete tasks."
+            )
+
+        try:
+            task = (
+                Task.objects
+                .select_related(
+                    "workflow",
+                    "created_by",
+                    "assigned_to",
+                    "stage",
+                )
+                .get(
+                    pk=pk
+                )
+            )
+        except Task.DoesNotExist:
+            return Response(
+                {
+                    "detail":
+                        "Task not found."
+                },
+                status=404,
+            )
+
+        before = serialize_task(
+            task
+        )
+
+        audit_task_deleted(
+            task,
+            actor=user,
+            before=before,
+            request=request,
+        )
+
+        task.delete()
+
+        return Response(
+            status=204
         )

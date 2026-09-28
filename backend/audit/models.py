@@ -23,6 +23,7 @@ class AuditLog(models.Model):
         TASK_ASSIGNED = "TASK_ASSIGNED", "Task Assigned"
         TASK_COMPLETED = "TASK_COMPLETED", "Task Completed"
         TASK_CANCELLED = "TASK_CANCELLED", "Task Cancelled"
+        TASK_DELETED = "TASK_DELETED", "Task Deleted"
 
         DEPENDENCY_CREATED = "DEPENDENCY_CREATED", "Dependency Created"
 

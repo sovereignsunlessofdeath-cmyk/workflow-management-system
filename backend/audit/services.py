@@ -362,3 +362,25 @@ def audit_approval_decided(
         },
         request=request,
     )
+
+def audit_task_deleted(
+    task,
+    actor=None,
+    before=None,
+    request=None,
+):
+    return record_audit(
+        action=AuditLog.Action.TASK_DELETED,
+        actor=actor,
+        target_type="Task",
+        target_id=str(task.id),
+        description=(
+            f'Task "{task.title}" was permanently deleted.'
+        ),
+        before=before,
+        after=None,
+        metadata={
+            "operation": "TASK_PERMANENTLY_DELETED",
+        },
+        request=request,
+    )

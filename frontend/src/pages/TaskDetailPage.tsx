@@ -42,6 +42,7 @@ import {
   getWorkflowDetail,
   getWorkflowStages,
   getWorkflowTasks,
+  permanentlyDeleteTask,
   reopenTask,
   updateTask,
   type ApprovalItem,
@@ -60,7 +61,6 @@ import type {
   WorkflowItem,
 } from "../api/workflows.api";
 
-
 type TaskPageData = {
   task: WorkflowTask;
   workflow: WorkflowItem;
@@ -70,7 +70,6 @@ type TaskPageData = {
   approvals: ApprovalItem[];
 };
 
-
 function formatLabel(
   value: string,
 ) {
@@ -79,11 +78,10 @@ function formatLabel(
     .replaceAll("_", " ")
     .replace(
       /\b\w/g,
-      (char) =>
-        char.toUpperCase(),
+      (character) =>
+        character.toUpperCase(),
     );
 }
-
 
 function statusClasses(
   status: TaskStatus,
@@ -126,9 +124,9 @@ function statusClasses(
   }
 }
 
-
 function priorityClasses(
-  priority: WorkflowTask["priority"],
+  priority:
+    WorkflowTask["priority"],
 ) {
   switch (priority) {
     case "URGENT":
@@ -160,7 +158,6 @@ function priorityClasses(
       );
   }
 }
-
 
 function getErrorMessage(
   error: any,
@@ -222,7 +219,6 @@ function getErrorMessage(
   return fallback;
 }
 
-
 export default function TaskDetailPage() {
   const { taskId } =
     useParams();
@@ -237,7 +233,6 @@ export default function TaskDetailPage() {
     user?.role ===
     "ADMINISTRATOR";
 
-
   const [
     data,
     setData,
@@ -249,49 +244,41 @@ export default function TaskDetailPage() {
   const [
     loading,
     setLoading,
-  ] =
-    useState(true);
+  ] = useState(true);
 
   const [
     pageError,
     setPageError,
-  ] =
-    useState("");
+  ] = useState("");
 
   const [
     actionError,
     setActionError,
-  ] =
-    useState("");
+  ] = useState("");
 
   const [
     updatingStatus,
     setUpdatingStatus,
-  ] =
-    useState(false);
+  ] = useState(false);
 
-
-  // =================================
-  // DEPENDENCY STATE
-  // =================================
+  // ================================
+  // DEPENDENCIES
+  // ================================
 
   const [
     dependencyModalOpen,
     setDependencyModalOpen,
-  ] =
-    useState(false);
+  ] = useState(false);
 
   const [
     selectedDependencyTask,
     setSelectedDependencyTask,
-  ] =
-    useState("");
+  ] = useState("");
 
   const [
     submittingDependency,
     setSubmittingDependency,
-  ] =
-    useState(false);
+  ] = useState(false);
 
   const [
     deletingDependencyId,
@@ -301,16 +288,14 @@ export default function TaskDetailPage() {
       string | null
     >(null);
 
-
-  // =================================
-  // APPROVAL STATE
-  // =================================
+  // ================================
+  // APPROVALS
+  // ================================
 
   const [
     approvalModalOpen,
     setApprovalModalOpen,
-  ] =
-    useState(false);
+  ] = useState(false);
 
   const [
     assignableUsers,
@@ -321,48 +306,49 @@ export default function TaskDetailPage() {
   const [
     approverId,
     setApproverId,
-  ] =
-    useState("");
+  ] = useState("");
 
   const [
     approvalComment,
     setApprovalComment,
-  ] =
-    useState("");
+  ] = useState("");
 
   const [
     submittingApproval,
     setSubmittingApproval,
-  ] =
-    useState(false);
+  ] = useState(false);
 
-
-  // =================================
-  // REOPEN STATE
-  // =================================
+  // ================================
+  // REOPEN
+  // ================================
 
   const [
     reopenModalOpen,
     setReopenModalOpen,
-  ] =
-    useState(false);
+  ] = useState(false);
 
   const [
     reopenReason,
     setReopenReason,
-  ] =
-    useState("");
+  ] = useState("");
 
   const [
     reopeningTask,
     setReopeningTask,
-  ] =
-    useState(false);
+  ] = useState(false);
 
+  // ================================
+  // PERMANENT DELETE
+  // ================================
 
-  // =================================
+  const [
+    deletingTask,
+    setDeletingTask,
+  ] = useState(false);
+
+  // ================================
   // LOAD DATA
-  // =================================
+  // ================================
 
   const loadData =
     useCallback(
@@ -373,7 +359,6 @@ export default function TaskDetailPage() {
 
         try {
           setLoading(true);
-
           setPageError("");
 
           const task =
@@ -408,11 +393,8 @@ export default function TaskDetailPage() {
 
           setData({
             task,
-
             workflow,
-
             stages,
-
             workflowTasks,
 
             dependencies:
@@ -447,15 +429,13 @@ export default function TaskDetailPage() {
       [taskId],
     );
 
-
   useEffect(() => {
     void loadData();
   }, [loadData]);
 
-
-  // =================================
-  // COMPUTED DATA
-  // =================================
+  // ================================
+  // COMPUTED VALUES
+  // ================================
 
   const currentStage =
     useMemo(() => {
@@ -474,7 +454,6 @@ export default function TaskDetailPage() {
         ) ?? null
       );
     }, [data]);
-
 
   const dependencyTasks =
     useMemo(() => {
@@ -502,8 +481,10 @@ export default function TaskDetailPage() {
           (
             item,
           ): item is {
-            dependency: TaskDependency;
-            task: WorkflowTask;
+            dependency:
+              TaskDependency;
+            task:
+              WorkflowTask;
           } =>
             Boolean(
               item.task,
@@ -511,20 +492,23 @@ export default function TaskDetailPage() {
         );
     }, [data]);
 
-
   const availableDependencyTasks =
     useMemo(() => {
       if (!data) {
         return [];
       }
 
-      const currentDependencyIds =
-        new Set(
-          data.dependencies.map(
-            (dependency) =>
-              dependency.depends_on,
-          ),
-        );
+      const
+        currentDependencyIds =
+          new Set(
+            data.dependencies.map(
+              (
+                dependency,
+              ) =>
+                dependency
+                  .depends_on,
+            ),
+          );
 
       return (
         data.workflowTasks.filter(
@@ -537,7 +521,6 @@ export default function TaskDetailPage() {
         )
       );
     }, [data]);
-
 
   const pendingApproval =
     useMemo(() => {
@@ -554,10 +537,9 @@ export default function TaskDetailPage() {
       );
     }, [data]);
 
-
-  // =================================
-  // STATUS
-  // =================================
+  // ================================
+  // STATUS CHANGE
+  // ================================
 
   async function handleStatusChange(
     status: TaskStatus,
@@ -572,10 +554,7 @@ export default function TaskDetailPage() {
     }
 
     try {
-      setUpdatingStatus(
-        true,
-      );
-
+      setUpdatingStatus(true);
       setActionError("");
 
       const updated =
@@ -631,8 +610,7 @@ export default function TaskDetailPage() {
         Array.isArray(
           blocking,
         ) &&
-        blocking.length >
-          0
+        blocking.length > 0
       ) {
         setActionError(
           `${
@@ -659,37 +637,28 @@ export default function TaskDetailPage() {
     }
   }
 
-
-  // =================================
-  // REOPEN
-  // =================================
+  // ================================
+  // REOPEN TASK
+  // ================================
 
   function openReopenModal() {
     setActionError("");
-
     setReopenReason("");
-
-    setReopenModalOpen(
-      true,
-    );
+    setReopenModalOpen(true);
   }
-
 
   function closeReopenModal() {
     if (reopeningTask) {
       return;
     }
 
-    setReopenModalOpen(
-      false,
-    );
-
+    setReopenModalOpen(false);
     setReopenReason("");
   }
 
-
   async function handleReopenTask(
-    event: React.FormEvent,
+    event:
+      React.FormEvent,
   ) {
     event.preventDefault();
 
@@ -701,10 +670,7 @@ export default function TaskDetailPage() {
     }
 
     try {
-      setReopeningTask(
-        true,
-      );
-
+      setReopeningTask(true);
       setActionError("");
 
       await reopenTask(
@@ -718,11 +684,6 @@ export default function TaskDetailPage() {
 
       setReopenReason("");
 
-      /*
-       * Reload everything because reopening
-       * may also change the parent workflow
-       * from COMPLETED back to ACTIVE.
-       */
       await loadData();
     } catch (
       error: any
@@ -745,10 +706,64 @@ export default function TaskDetailPage() {
     }
   }
 
+  // ================================
+  // PERMANENT DELETE
+  // ================================
 
-  // =================================
+  async function
+    handlePermanentDeleteTask() {
+    if (
+      !data ||
+      !isAdministrator
+    ) {
+      return;
+    }
+
+    const confirmed =
+      window.confirm(
+        `Permanently delete "${data.task.title}"?\n\nThis action cannot be undone.`,
+      );
+
+    if (!confirmed) {
+      return;
+    }
+
+    try {
+      setDeletingTask(true);
+      setActionError("");
+
+      await permanentlyDeleteTask(
+        data.task.id,
+      );
+
+      navigate(
+        `/workflows/${data.workflow.id}`,
+        {
+          replace: true,
+        },
+      );
+    } catch (
+      error: any
+    ) {
+      console.error(
+        "Unable to permanently delete task:",
+        error,
+      );
+
+      setActionError(
+        getErrorMessage(
+          error,
+          "Unable to permanently delete task.",
+        ),
+      );
+    } finally {
+      setDeletingTask(false);
+    }
+  }
+
+  // ================================
   // DEPENDENCIES
-  // =================================
+  // ================================
 
   function openDependencyModal() {
     setActionError("");
@@ -762,10 +777,11 @@ export default function TaskDetailPage() {
     );
   }
 
-
-  async function handleAddDependency(
-    event: React.FormEvent,
-  ) {
+  async function
+    handleAddDependency(
+      event:
+        React.FormEvent,
+    ) {
     event.preventDefault();
 
     if (
@@ -785,8 +801,7 @@ export default function TaskDetailPage() {
       const dependency =
         await createTaskDependency(
           {
-            task:
-              taskId,
+            task: taskId,
 
             depends_on:
               selectedDependencyTask,
@@ -800,7 +815,9 @@ export default function TaskDetailPage() {
                 ...current,
 
                 dependencies: [
-                  ...current.dependencies,
+                  ...current
+                    .dependencies,
+
                   dependency,
                 ],
               }
@@ -835,10 +852,11 @@ export default function TaskDetailPage() {
     }
   }
 
-
-  async function handleDeleteDependency(
-    dependency: TaskDependency,
-  ) {
+  async function
+    handleDeleteDependency(
+      dependency:
+        TaskDependency,
+    ) {
     const confirmed =
       window.confirm(
         `Remove dependency "${dependency.depends_on_title}"?`,
@@ -869,7 +887,9 @@ export default function TaskDetailPage() {
                   current
                     .dependencies
                     .filter(
-                      (item) =>
+                      (
+                        item,
+                      ) =>
                         item.id !==
                         dependency.id,
                     ),
@@ -897,12 +917,12 @@ export default function TaskDetailPage() {
     }
   }
 
-
-  // =================================
+  // ================================
   // APPROVALS
-  // =================================
+  // ================================
 
-  async function openApprovalModal() {
+  async function
+    openApprovalModal() {
     try {
       setActionError("");
 
@@ -921,7 +941,6 @@ export default function TaskDetailPage() {
       );
 
       setApproverId("");
-
       setApprovalComment("");
 
       setApprovalModalOpen(
@@ -939,10 +958,11 @@ export default function TaskDetailPage() {
     }
   }
 
-
-  async function handleRequestApproval(
-    event: React.FormEvent,
-  ) {
+  async function
+    handleRequestApproval(
+      event:
+        React.FormEvent,
+    ) {
     event.preventDefault();
 
     if (
@@ -961,8 +981,7 @@ export default function TaskDetailPage() {
 
       const approval =
         await createApproval({
-          task:
-            taskId,
+          task: taskId,
 
           approver:
             approverId,
@@ -997,7 +1016,6 @@ export default function TaskDetailPage() {
       );
 
       setApproverId("");
-
       setApprovalComment("");
     } catch (
       error: any
@@ -1020,10 +1038,9 @@ export default function TaskDetailPage() {
     }
   }
 
-
-  // =================================
+  // ================================
   // LOADING
-  // =================================
+  // ================================
 
   if (loading) {
     return (
@@ -1042,10 +1059,9 @@ export default function TaskDetailPage() {
     );
   }
 
-
-  // =================================
+  // ================================
   // PAGE ERROR
-  // =================================
+  // ================================
 
   if (
     pageError ||
@@ -1082,7 +1098,6 @@ export default function TaskDetailPage() {
     );
   }
 
-
   const {
     task,
     workflow,
@@ -1092,7 +1107,6 @@ export default function TaskDetailPage() {
   const taskIsCompleted =
     task.status ===
     "COMPLETED";
-
 
   return (
     <>
@@ -1106,22 +1120,48 @@ export default function TaskDetailPage() {
       />
 
       <div className="space-y-6 p-4 md:p-6">
-        <button
-          type="button"
-          onClick={() =>
-            navigate(
-              `/workflows/${workflow.id}`,
-            )
-          }
-          className="inline-flex items-center gap-2 text-sm font-medium text-slate-500 transition hover:text-slate-700"
-        >
-          <ArrowLeft
-            size={16}
-          />
+        {/* BACK + ADMIN DELETE */}
 
-          Back to workflow
-        </button>
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <button
+            type="button"
+            onClick={() =>
+              navigate(
+                `/workflows/${workflow.id}`,
+              )
+            }
+            className="inline-flex items-center gap-2 text-sm font-medium text-slate-500 transition hover:text-slate-700"
+          >
+            <ArrowLeft
+              size={16}
+            />
 
+            Back to workflow
+          </button>
+
+          {isAdministrator && (
+            <button
+              type="button"
+              onClick={() =>
+                void handlePermanentDeleteTask()
+              }
+              disabled={
+                deletingTask
+              }
+              className="inline-flex items-center justify-center gap-2 rounded-xl border border-red-200 bg-red-50 px-4 py-2.5 text-sm font-semibold text-red-700 transition hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              <Trash2
+                size={16}
+              />
+
+              {deletingTask
+                ? "Deleting..."
+                : "Delete Task Permanently"}
+            </button>
+          )}
+        </div>
+
+        {/* ERROR */}
 
         {actionError && (
           <div className="flex items-center justify-between gap-4 rounded-xl border border-red-100 bg-red-50 px-4 py-3">
@@ -1132,7 +1172,9 @@ export default function TaskDetailPage() {
             <button
               type="button"
               onClick={() =>
-                setActionError("")
+                setActionError(
+                  "",
+                )
               }
               className="shrink-0 text-red-400 hover:text-red-600"
             >
@@ -1141,10 +1183,7 @@ export default function TaskDetailPage() {
           </div>
         )}
 
-
-        {/* =================================
-            TASK OVERVIEW
-        ================================= */}
+        {/* TASK OVERVIEW */}
 
         <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
           <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
@@ -1186,7 +1225,6 @@ export default function TaskDetailPage() {
             </div>
           </div>
 
-
           <div className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
             <div className="rounded-xl bg-slate-50 p-4">
               <div className="flex items-center gap-2 text-slate-400">
@@ -1204,7 +1242,6 @@ export default function TaskDetailPage() {
               </p>
             </div>
 
-
             <div className="rounded-xl bg-slate-50 p-4">
               <div className="flex items-center gap-2 text-slate-400">
                 <GitBranch
@@ -1217,11 +1254,11 @@ export default function TaskDetailPage() {
               </div>
 
               <p className="mt-2 text-sm font-semibold text-slate-700">
-                {currentStage?.name ??
+                {currentStage
+                  ?.name ??
                   "No stage"}
               </p>
             </div>
-
 
             <div className="rounded-xl bg-slate-50 p-4">
               <div className="flex items-center gap-2 text-slate-400">
@@ -1240,7 +1277,6 @@ export default function TaskDetailPage() {
               </p>
             </div>
 
-
             <div className="rounded-xl bg-slate-50 p-4">
               <div className="flex items-center gap-2 text-slate-400">
                 <CalendarDays
@@ -1256,18 +1292,14 @@ export default function TaskDetailPage() {
                 {task.due_date
                   ? new Date(
                       `${task.due_date}T00:00:00`,
-                    )
-                      .toLocaleDateString()
+                    ).toLocaleDateString()
                   : "No due date"}
               </p>
             </div>
           </div>
         </section>
 
-
-        {/* =================================
-            STATUS + DEPENDENCIES
-        ================================= */}
+        {/* STATUS + DETAILS */}
 
         <div className="grid gap-5 xl:grid-cols-3">
           <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm xl:col-span-2">
@@ -1284,7 +1316,6 @@ export default function TaskDetailPage() {
                 </p>
               </div>
 
-
               {!taskIsCompleted && (
                 <select
                   value={
@@ -1299,7 +1330,8 @@ export default function TaskDetailPage() {
                     event,
                   ) =>
                     void handleStatusChange(
-                      event.target
+                      event
+                        .target
                         .value as TaskStatus,
                     )
                   }
@@ -1324,7 +1356,6 @@ export default function TaskDetailPage() {
               )}
             </div>
 
-
             {taskIsCompleted && (
               <div className="mt-5 rounded-2xl border border-emerald-200 bg-emerald-50 p-5">
                 <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -1348,7 +1379,6 @@ export default function TaskDetailPage() {
                     </div>
                   </div>
 
-
                   {isAdministrator && (
                     <button
                       type="button"
@@ -1366,7 +1396,6 @@ export default function TaskDetailPage() {
                   )}
                 </div>
 
-
                 {!isAdministrator && (
                   <p className="mt-4 text-xs text-emerald-700">
                     Only an Administrator can reopen a completed task.
@@ -1375,6 +1404,7 @@ export default function TaskDetailPage() {
               </div>
             )}
 
+            {/* DEPENDENCIES */}
 
             <div className="mt-7">
               <div className="flex items-center justify-between gap-3">
@@ -1394,8 +1424,8 @@ export default function TaskDetailPage() {
                     openDependencyModal
                   }
                   disabled={
-                    availableDependencyTasks.length ===
-                    0
+                    availableDependencyTasks
+                      .length === 0
                   }
                   className="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-600 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
                 >
@@ -1406,7 +1436,6 @@ export default function TaskDetailPage() {
                   Add Dependency
                 </button>
               </div>
-
 
               {dependencyTasks.length ===
               0 ? (
@@ -1475,7 +1504,6 @@ export default function TaskDetailPage() {
                             </div>
                           </button>
 
-
                           <div className="flex items-center gap-3">
                             <span className="text-xs text-slate-400">
                               {complete
@@ -1511,7 +1539,6 @@ export default function TaskDetailPage() {
             </div>
           </section>
 
-
           {/* DETAILS */}
 
           <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
@@ -1531,7 +1558,6 @@ export default function TaskDetailPage() {
                 </p>
               </div>
 
-
               <div>
                 <p className="text-xs text-slate-400">
                   Created
@@ -1544,7 +1570,6 @@ export default function TaskDetailPage() {
                 </p>
               </div>
 
-
               <div>
                 <p className="text-xs text-slate-400">
                   Completed
@@ -1554,8 +1579,7 @@ export default function TaskDetailPage() {
                   {task.completed_at
                     ? new Date(
                         task.completed_at,
-                      )
-                        .toLocaleString()
+                      ).toLocaleString()
                     : "—"}
                 </p>
               </div>
@@ -1563,10 +1587,7 @@ export default function TaskDetailPage() {
           </section>
         </div>
 
-
-        {/* =================================
-            APPROVALS
-        ================================= */}
+        {/* APPROVALS */}
 
         <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -1587,7 +1608,6 @@ export default function TaskDetailPage() {
               </p>
             </div>
 
-
             {!pendingApproval &&
               task.status !==
                 "COMPLETED" &&
@@ -1604,7 +1624,6 @@ export default function TaskDetailPage() {
                 </button>
               )}
           </div>
-
 
           {approvals.length ===
           0 ? (
@@ -1652,7 +1671,6 @@ export default function TaskDetailPage() {
                       </span>
                     </div>
 
-
                     {approval.comment && (
                       <p className="mt-3 text-sm leading-6 text-slate-500">
                         {
@@ -1674,10 +1692,7 @@ export default function TaskDetailPage() {
         </section>
       </div>
 
-
-      {/* =================================
-          DEPENDENCY MODAL
-      ================================= */}
+      {/* DEPENDENCY MODAL */}
 
       {dependencyModalOpen && (
         <div className="fixed inset-0 z-[90] flex items-center justify-center bg-slate-950/45 p-4 backdrop-blur-sm">
@@ -1708,7 +1723,6 @@ export default function TaskDetailPage() {
                 <X size={18} />
               </button>
             </div>
-
 
             <form
               onSubmit={
@@ -1759,7 +1773,6 @@ export default function TaskDetailPage() {
                   )}
                 </select>
 
-
                 {availableDependencyTasks.length ===
                   0 && (
                   <p className="mt-2 text-xs text-slate-400">
@@ -1767,7 +1780,6 @@ export default function TaskDetailPage() {
                   </p>
                 )}
               </div>
-
 
               <div className="flex justify-end gap-3 border-t border-slate-100 pt-4">
                 <button
@@ -1803,10 +1815,7 @@ export default function TaskDetailPage() {
         </div>
       )}
 
-
-      {/* =================================
-          APPROVAL MODAL
-      ================================= */}
+      {/* APPROVAL MODAL */}
 
       {approvalModalOpen && (
         <div className="fixed inset-0 z-[90] flex items-center justify-center bg-slate-950/45 p-4 backdrop-blur-sm">
@@ -1837,7 +1846,6 @@ export default function TaskDetailPage() {
                 <X size={18} />
               </button>
             </div>
-
 
             <form
               onSubmit={
@@ -1887,7 +1895,6 @@ export default function TaskDetailPage() {
                 </select>
               </div>
 
-
               <div>
                 <label className="text-sm font-medium text-slate-700">
                   Comment
@@ -1910,7 +1917,6 @@ export default function TaskDetailPage() {
                   className="mt-2 w-full resize-none rounded-xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-blue-400"
                 />
               </div>
-
 
               <div className="flex justify-end gap-3 border-t border-slate-100 pt-4">
                 <button
@@ -1946,10 +1952,7 @@ export default function TaskDetailPage() {
         </div>
       )}
 
-
-      {/* =================================
-          REOPEN TASK MODAL
-      ================================= */}
+      {/* REOPEN TASK MODAL */}
 
       {reopenModalOpen && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/50 p-4 backdrop-blur-sm">
@@ -1974,7 +1977,6 @@ export default function TaskDetailPage() {
                 </div>
               </div>
 
-
               <button
                 type="button"
                 disabled={
@@ -1988,7 +1990,6 @@ export default function TaskDetailPage() {
                 <X size={18} />
               </button>
             </div>
-
 
             <form
               onSubmit={
@@ -2025,7 +2026,6 @@ export default function TaskDetailPage() {
                 />
               </div>
 
-
               <div className="rounded-xl border border-amber-100 bg-amber-50 p-4">
                 <div className="flex gap-3">
                   <RotateCcw
@@ -2045,7 +2045,6 @@ export default function TaskDetailPage() {
                   </div>
                 </div>
               </div>
-
 
               <div className="flex justify-end gap-3 border-t border-slate-100 pt-4">
                 <button

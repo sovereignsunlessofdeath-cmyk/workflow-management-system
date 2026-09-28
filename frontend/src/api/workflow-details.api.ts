@@ -188,6 +188,14 @@ export async function reopenTask(
   return response.data;
 }
 
+export async function permanentlyDeleteTask(
+  taskId: string,
+) {
+  await api.delete(
+    `/tasks/${taskId}/permanent-delete/`,
+  );
+}
+
 export async function getTaskDependencies() {
   const response =
     await api.get<

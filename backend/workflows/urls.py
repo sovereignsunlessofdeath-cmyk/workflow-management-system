@@ -13,6 +13,7 @@ from workflows.execution_views import (
 from workflows.views import (
     TaskDetailView,
     TaskListCreateView,
+    TaskPermanentDeleteView,
     TaskReopenView,
     WorkflowDetailView,
     WorkflowListCreateView,
@@ -32,21 +33,26 @@ urlpatterns = [
         name="workflow-detail",
     ),
 
-    # Tasks
+# Tasks
     path(
-        "tasks/",
-        TaskListCreateView.as_view(),
-        name="task-list-create",
+       "tasks/",
+       TaskListCreateView.as_view(),
+       name="task-list-create",
     ),
     path(
-        "tasks/<uuid:pk>/",
-        TaskDetailView.as_view(),
-        name="task-detail",
+       "tasks/<uuid:pk>/",
+       TaskDetailView.as_view(),
+       name="task-detail",
     ),
     path(
-        "tasks/<uuid:pk>/reopen/",
-        TaskReopenView.as_view(),
-        name="task-reopen",
+       "tasks/<uuid:pk>/reopen/",
+       TaskReopenView.as_view(),
+       name="task-reopen",
+    ),
+    path(
+       "tasks/<uuid:pk>/permanent-delete/",
+       TaskPermanentDeleteView.as_view(),
+       name="task-permanent-delete",
     ),
 
     # Workflow stages
