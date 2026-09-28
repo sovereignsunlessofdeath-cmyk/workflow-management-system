@@ -166,6 +166,60 @@ def notify_task_status_changed(
 
     return notifications
 
+def notify_task_ready_for_review(
+    task,
+):
+    User = get_user_model()
+
+    reviewers = (
+        User.objects.filter(
+            role__in=[
+                User.Role.ADMINISTRATOR,
+                User.Role.MANAGER,
+            ],
+            status=User.Status.ACTIVE,
+            is_active=True,
+        )
+        .exclude(
+            id=task.assigned_to_id
+        )
+    )
+
+    notifications = []
+
+    staff_name = (
+        task.assigned_to.full_name
+        if task.assigned_to
+        else "A staff member"
+    )
+
+    for reviewer in reviewers:
+        notifications.append(
+            create_notification(
+                recipient=reviewer,
+                notification_type=(
+                    Notification.Type.TASK_STATUS_CHANGED
+                ),
+                title=(
+                    "Task Ready for Review"
+                ),
+                message=(
+                    f'{staff_name} marked '
+                    f'"{task.title}" as done. '
+                    "Please review and confirm completion."
+                ),
+                task=task,
+                workflow=task.workflow,
+                metadata={
+                    "status": "DONE",
+                    "operation": (
+                        "TASK_READY_FOR_REVIEW"
+                    ),
+                },
+            )
+        )
+
+    return notifications
 
 def notify_task_completed(task):
     recipients = set()

@@ -18,8 +18,13 @@ class Workflow(models.Model):
         editable=False,
     )
 
-    name = models.CharField(max_length=255)
-    description = models.TextField(blank=True)
+    name = models.CharField(
+        max_length=255
+    )
+
+    description = models.TextField(
+        blank=True
+    )
 
     created_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
@@ -43,12 +48,19 @@ class Workflow(models.Model):
         blank=True,
     )
 
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
+    created_at = models.DateTimeField(
+        auto_now_add=True
+    )
+
+    updated_at = models.DateTimeField(
+        auto_now=True
+    )
 
     class Meta:
         db_table = "workflows"
-        ordering = ["-created_at"]
+        ordering = [
+            "-created_at"
+        ]
 
     def __str__(self):
         return self.name
@@ -68,37 +80,82 @@ class WorkflowStage(models.Model):
         related_name="stages",
     )
 
-    name = models.CharField(max_length=255)
+    name = models.CharField(
+        max_length=255
+    )
 
-    description = models.TextField(blank=True)
+    description = models.TextField(
+        blank=True
+    )
 
     order = models.PositiveIntegerField()
 
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
+    created_at = models.DateTimeField(
+        auto_now_add=True
+    )
+
+    updated_at = models.DateTimeField(
+        auto_now=True
+    )
 
     class Meta:
         db_table = "workflow_stages"
-        ordering = ["order"]
+
+        ordering = [
+            "order"
+        ]
+
         constraints = [
             models.UniqueConstraint(
-                fields=["workflow", "order"],
-                name="unique_workflow_stage_order",
+                fields=[
+                    "workflow",
+                    "order",
+                ],
+                name=(
+                    "unique_workflow_stage_order"
+                ),
             ),
         ]
 
     def __str__(self):
-        return f"{self.workflow.name} - {self.name}"
+        return (
+            f"{self.workflow.name} - "
+            f"{self.name}"
+        )
 
 
 class Task(models.Model):
 
     class Status(models.TextChoices):
-        TODO = "TODO", "To Do"
-        IN_PROGRESS = "IN_PROGRESS", "In Progress"
-        PENDING_APPROVAL = "PENDING_APPROVAL", "Pending Approval"
-        COMPLETED = "COMPLETED", "Completed"
-        CANCELLED = "CANCELLED", "Cancelled"
+        TODO = (
+            "TODO",
+            "To Do",
+        )
+
+        IN_PROGRESS = (
+            "IN_PROGRESS",
+            "In Progress",
+        )
+
+        DONE = (
+            "DONE",
+            "Done",
+        )
+
+        PENDING_APPROVAL = (
+            "PENDING_APPROVAL",
+            "Pending Approval",
+        )
+
+        COMPLETED = (
+            "COMPLETED",
+            "Completed",
+        )
+
+        CANCELLED = (
+            "CANCELLED",
+            "Cancelled",
+        )
 
     class Priority(models.TextChoices):
         LOW = "LOW", "Low"
@@ -126,8 +183,13 @@ class Task(models.Model):
         related_name="tasks",
     )
 
-    title = models.CharField(max_length=255)
-    description = models.TextField(blank=True)
+    title = models.CharField(
+        max_length=255
+    )
+
+    description = models.TextField(
+        blank=True
+    )
 
     created_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
@@ -165,16 +227,40 @@ class Task(models.Model):
         blank=True,
     )
 
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
+    created_at = models.DateTimeField(
+        auto_now_add=True
+    )
+
+    updated_at = models.DateTimeField(
+        auto_now=True
+    )
 
     class Meta:
         db_table = "tasks"
-        ordering = ["due_date", "-created_at"]
+
+        ordering = [
+            "due_date",
+            "-created_at",
+        ]
+
         indexes = [
-            models.Index(fields=["workflow", "status"]),
-            models.Index(fields=["assigned_to", "status"]),
-            models.Index(fields=["due_date"]),
+            models.Index(
+                fields=[
+                    "workflow",
+                    "status",
+                ]
+            ),
+            models.Index(
+                fields=[
+                    "assigned_to",
+                    "status",
+                ]
+            ),
+            models.Index(
+                fields=[
+                    "due_date"
+                ]
+            ),
         ]
 
     def __str__(self):
@@ -201,27 +287,51 @@ class TaskDependency(models.Model):
         related_name="dependent_tasks",
     )
 
-    created_at = models.DateTimeField(auto_now_add=True)
+    created_at = models.DateTimeField(
+        auto_now_add=True
+    )
 
     class Meta:
-        db_table = "task_dependencies"
+        db_table = (
+            "task_dependencies"
+        )
+
         constraints = [
             models.UniqueConstraint(
-                fields=["task", "depends_on"],
-                name="unique_task_dependency",
+                fields=[
+                    "task",
+                    "depends_on",
+                ],
+                name=(
+                    "unique_task_dependency"
+                ),
             ),
         ]
 
     def __str__(self):
-        return f"{self.task.title} depends on {self.depends_on.title}"
+        return (
+            f"{self.task.title} depends on "
+            f"{self.depends_on.title}"
+        )
 
 
 class Approval(models.Model):
 
     class Status(models.TextChoices):
-        PENDING = "PENDING", "Pending"
-        APPROVED = "APPROVED", "Approved"
-        REJECTED = "REJECTED", "Rejected"
+        PENDING = (
+            "PENDING",
+            "Pending",
+        )
+
+        APPROVED = (
+            "APPROVED",
+            "Approved",
+        )
+
+        REJECTED = (
+            "REJECTED",
+            "Rejected",
+        )
 
     id = models.UUIDField(
         primary_key=True,
@@ -253,9 +363,13 @@ class Approval(models.Model):
         default=Status.PENDING,
     )
 
-    comment = models.TextField(blank=True)
+    comment = models.TextField(
+        blank=True
+    )
 
-    requested_at = models.DateTimeField(auto_now_add=True)
+    requested_at = models.DateTimeField(
+        auto_now_add=True
+    )
 
     decided_at = models.DateTimeField(
         null=True,
@@ -264,11 +378,28 @@ class Approval(models.Model):
 
     class Meta:
         db_table = "task_approvals"
-        ordering = ["-requested_at"]
+
+        ordering = [
+            "-requested_at"
+        ]
+
         indexes = [
-            models.Index(fields=["task", "status"]),
-            models.Index(fields=["approver", "status"]),
+            models.Index(
+                fields=[
+                    "task",
+                    "status",
+                ]
+            ),
+            models.Index(
+                fields=[
+                    "approver",
+                    "status",
+                ]
+            ),
         ]
 
     def __str__(self):
-        return f"{self.task.title} - {self.status}"
+        return (
+            f"{self.task.title} - "
+            f"{self.status}"
+        )

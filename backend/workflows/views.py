@@ -29,6 +29,7 @@ from audit.services import (
 from notifications.services import (
     notify_task_assigned,
     notify_task_completed,
+    notify_task_ready_for_review,
     notify_task_status_changed,
     notify_workflow_archived,
     notify_workflow_created,
@@ -277,145 +278,171 @@ class TaskDetailView(
             assigned_to=user
         )
 
-    @transaction.atomic
-    def perform_update(
-        self,
-        serializer,
+@transaction.atomic
+def perform_update(
+    self,
+    serializer,
+):
+    user = self.request.user
+
+    # =================================
+    # STAFF FIELD RESTRICTION
+    # =================================
+
+    if (
+        user.role ==
+        user.Role.STAFF
     ):
-        user = (
-            self.request.user
-        )
+        allowed_fields = {
+            "status",
+        }
 
-        if (
-            user.role ==
-            user.Role.STAFF
-        ):
-            allowed_fields = {
-                "status",
-            }
-
-            incoming_fields = set(
-                serializer
-                .validated_data
-                .keys()
-            )
-
-            if not (
-                incoming_fields
-                .issubset(
-                    allowed_fields
-                )
-            ):
-                raise PermissionDenied(
-                    "Staff can only update task status."
-                )
-
-        current_task = (
-            self.get_object()
-        )
-
-        old_status = (
-            current_task.status
-        )
-
-        old_assigned_to_id = (
-            current_task
-            .assigned_to_id
-        )
-
-        before = (
-            serialize_task(
-                current_task
-            )
-        )
-
-        requested_status = (
+        incoming_fields = set(
             serializer
             .validated_data
-            .get(
-                "status",
-                old_status,
-            )
+            .keys()
         )
 
-        completing_task = (
-            requested_status ==
-            Task.Status.COMPLETED
-            and
-            old_status !=
-            Task.Status.COMPLETED
+        if not (
+            incoming_fields
+            .issubset(
+                allowed_fields
+            )
+        ):
+            raise PermissionDenied(
+                "Staff can only update task status."
+            )
+
+    # =================================
+    # CURRENT TASK STATE
+    # =================================
+
+    current_task = (
+        self.get_object()
+    )
+
+    old_status = (
+        current_task.status
+    )
+
+    old_assigned_to_id = (
+        current_task
+        .assigned_to_id
+    )
+
+    before = (
+        serialize_task(
+            current_task
         )
+    )
 
-        if completing_task:
-            task = serializer.save(
-                status=old_status
-            )
-
-            complete_task(
-                task
-            )
-
-            task.refresh_from_db()
-
-        else:
-            task = (
-                serializer.save()
-            )
-
-        assignment_changed = (
-            old_assigned_to_id !=
-            task.assigned_to_id
-            and
-            task.assigned_to
+    requested_status = (
+        serializer
+        .validated_data
+        .get(
+            "status",
+            old_status,
         )
+    )
 
-        status_changed = (
-            old_status !=
-            task.status
-        )
+    # =================================
+    # STAFF STATUS RESTRICTION
+    # =================================
 
-        if completing_task:
-            audit_task_completed(
-                task,
-                actor=user,
-                before=before,
-                request=
-                    self.request,
-            )
+    if (
+        user.role ==
+        user.Role.STAFF
+    ):
+        staff_allowed_statuses = {
+            Task.Status.TODO,
+            Task.Status.IN_PROGRESS,
+            Task.Status.DONE,
+        }
 
-            if status_changed:
-                notify_task_status_changed(
-                    task,
-                    old_status,
-                    task.status,
+        if (
+            requested_status not in
+            staff_allowed_statuses
+        ):
+            raise PermissionDenied(
+                (
+                    "Staff can only move tasks "
+                    "between To Do, In Progress, "
+                    "and Done."
                 )
-
-            notify_task_completed(
-                task
             )
 
-            return
+    # =================================
+    # COMPLETION PERMISSION
+    # =================================
 
-        audit_task_updated(
+    if (
+        requested_status ==
+        Task.Status.COMPLETED
+        and
+        user.role not in [
+            user.Role.ADMINISTRATOR,
+            user.Role.MANAGER,
+        ]
+    ):
+        raise PermissionDenied(
+            (
+                "Only Administrators and Managers "
+                "can confirm task completion."
+            )
+        )
+
+    completing_task = (
+        requested_status ==
+        Task.Status.COMPLETED
+        and
+        old_status !=
+        Task.Status.COMPLETED
+    )
+
+    # =================================
+    # COMPLETE TASK
+    # =================================
+
+    if completing_task:
+        task = serializer.save(
+            status=old_status
+        )
+
+        complete_task(
+            task
+        )
+
+        task.refresh_from_db()
+
+    else:
+        task = (
+            serializer.save()
+        )
+
+    assignment_changed = (
+        old_assigned_to_id !=
+        task.assigned_to_id
+        and
+        task.assigned_to
+    )
+
+    status_changed = (
+        old_status !=
+        task.status
+    )
+
+    # =================================
+    # COMPLETED TASK AUDIT
+    # =================================
+
+    if completing_task:
+        audit_task_completed(
             task,
             actor=user,
             before=before,
             request=
                 self.request,
         )
-
-        if assignment_changed:
-            audit_task_assigned(
-                task,
-                actor=user,
-                before=before,
-                request=
-                    self.request,
-            )
-
-            notify_task_assigned(
-                task
-            )
 
         if status_changed:
             notify_task_status_changed(
@@ -424,21 +451,83 @@ class TaskDetailView(
                 task.status,
             )
 
-        if (
-            status_changed and
-            task.status !=
-            Task.Status.COMPLETED and
-            task.completed_at
-            is not None
-        ):
-            task.completed_at = None
+        notify_task_completed(
+            task
+        )
 
-            task.save(
-                update_fields=[
-                    "completed_at",
-                    "updated_at",
-                ]
+        return
+
+    # =================================
+    # NORMAL TASK UPDATE
+    # =================================
+
+    audit_task_updated(
+        task,
+        actor=user,
+        before=before,
+        request=
+            self.request,
+    )
+
+    # =================================
+    # ASSIGNMENT CHANGE
+    # =================================
+
+    if assignment_changed:
+        audit_task_assigned(
+            task,
+            actor=user,
+            before=before,
+            request=
+                self.request,
+        )
+
+        notify_task_assigned(
+            task
+        )
+
+    # =================================
+    # STATUS CHANGE
+    # =================================
+
+    if status_changed:
+        notify_task_status_changed(
+            task,
+            old_status,
+            task.status,
+        )
+
+        # Staff has finished the work
+        # and management should review it.
+        if (
+            task.status ==
+            Task.Status.DONE
+        ):
+            notify_task_ready_for_review(
+                task
             )
+
+    # =================================
+    # CLEAR COMPLETION DATE
+    # =================================
+
+    if (
+        status_changed
+        and
+        task.status !=
+        Task.Status.COMPLETED
+        and
+        task.completed_at
+        is not None
+    ):
+        task.completed_at = None
+
+        task.save(
+            update_fields=[
+                "completed_at",
+                "updated_at",
+            ]
+        )
 
     def perform_destroy(
         self,
